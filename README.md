@@ -109,11 +109,16 @@ docker-compose up --build
 
 ## Contribuição
 
-1. Fork do repositório
-2. Criar branch (git checkout -b feature/nova-funcionalidade)
-3. Commit (git commit -m "Adiciona nova funcionalidade")
-4. Push (git push origin feature/nova-funcionalidade)
-5. Abrir Pull Request
+Contribuições são bem-vindas! Para manter consistência e boas práticas no projeto, siga as instruções detalhadas no arquivo [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Ele inclui orientações sobre:
+* Clonar o repositório
+* Criar branch a partir da `main`
+* Padrão de commits (**Conventional Commits**)
+* Abrir Pull Requests com descrição clara
+* Boas práticas de **componentes reutilizáveis**, **testes**, **ESLint/Prettier**, **protótipo Figma** e **integração com backend**
+
+Obrigado por ajudar a melhorar o Diário de Enxaqueca!
 
 ## Licença
 
