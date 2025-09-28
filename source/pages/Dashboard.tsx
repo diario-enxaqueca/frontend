@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { listarEntradas } from "../services/api";
-import EntradaForm from "../components/EntradaForm";
+import { listarRegistros } from "../services/api";
+import RegistroForm from "../components/RegistroForm";
 
-interface Entrada {
+interface Registro {
   id: number;
   usuario_id: number;
   data: string;
@@ -11,24 +11,24 @@ interface Entrada {
 }
 
 const Dashboard: React.FC = () => {
-  const [entradas, setEntradas] = useState<Entrada[]>([]);
+  const [registros, setRegistros] = useState<Registro[]>([]);
 
-  const fetchEntradas = async () => {
-    const data = await listarEntradas();
-    setEntradas(data);
+  const fetchRegistros = async () => {
+    const data = await listarRegistros();
+    setRegistros(data);
   };
 
   useEffect(() => {
-    fetchEntradas();
+    fetchRegistros();
   }, []);
 
   return (
     <div>
       <h1>Dashboard do Diário de Enxaqueca</h1>
-      <EntradaForm />
-      <h2>Entradas cadastradas:</h2>
+      <RegistroForm />
+      <h2>Registros cadastradas:</h2>
       <ul>
-        {entradas.map(e => (
+        {registros.map(e => (
           <li key={e.id}>
             {e.data} - Intensidade: {e.intensidade} - {e.descricao || "Sem descrição"}
           </li>

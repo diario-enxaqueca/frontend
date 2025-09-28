@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { criarEntrada } from "../services/api";
+import { criarRegistro } from "../services/api";
 
-const EntradaForm: React.FC = () => {
+const RegistroForm: React.FC = () => {
   const [usuarioId, setUsuarioId] = useState<number>(1);
   const [data, setData] = useState<string>("");
   const [intensidade, setIntensidade] = useState<number>(0);
@@ -10,12 +10,12 @@ const EntradaForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = await criarEntrada({ usuario_id: usuarioId, data, intensidade, descricao });
-      alert("Entrada criada com sucesso!");
+      const result = await criarRegistro({ usuario_id: usuarioId, data, intensidade, descricao });
+      alert("Registro criada com sucesso!");
       console.log(result);
     } catch (err) {
       console.error(err);
-      alert("Erro ao criar entrada");
+      alert("Erro ao criar registro");
     }
   };
 
@@ -30,9 +30,9 @@ const EntradaForm: React.FC = () => {
       <label>Descrição:</label>
       <input type="text" value={descricao} onChange={e => setDescricao(e.target.value)} />
 
-      <button type="submit">Salvar Entrada</button>
+      <button type="submit">Salvar Registro</button>
     </form>
   );
 };
 
-export default EntradaForm;
+export default RegistroForm;
