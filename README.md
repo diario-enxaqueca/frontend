@@ -15,31 +15,6 @@ Implementação do MVP utilizando React.js + TypeScript, seguindo prototipo de a
 * Contribuição
 * Licença
 
-## MVP
-
-O MVP da primeira entrega contempla:
-
-* Interface para CRUD de registros de enxaqueca
-* Integração com backend via API REST FastAPI
-* Protótipo de alta fidelidade implementado conforme figma
-* Boas práticas de usabilidade, cores, ícones autoexplicativos e guia de estilo
-* Preparação para expansão futura para usuários e autenticação
-
-## Backlog (10 Histórias de Usuário)
-
-| #  | História de Usuário                | Regras de Negócio                                                  |
-| -- | ---------------------------------- | ------------------------------------------------------------------ |
-| 1  | Visualizar dashboard com registros | Mostrar registros do usuário logado                                |
-| 2  | Criar novo registro de enxaqueca   | Formulário com data, intensidade, gatilhos, medicação, observações |
-| 3  | Editar registro existente          | Campos editáveis com validação                                     |
-| 4  | Excluir registro                   | Confirmação antes da exclusão                                      |
-| 5  | Navegação limpa                    | Menu intuitivo e responsivo                                        |
-| 6  | Consistência visual                | Seguir paleta de cores e guia de estilo                            |
-| 7  | Ícones explicativos                | Botões com ícones claros e autoexplicativos                        |
-| 8  | Feedback de ações                  | Mensagens de sucesso/erro ao criar, editar ou excluir              |
-| 9  | Integração com backend             | Chamadas API usando fetch/axios e tratamento de erros              |
-| 10 | Protótipo Figma                    | Alta fidelidade implementada fielmente                             |
-
 
 # Tecnologias
 
@@ -74,8 +49,8 @@ diario-enxaqueca-frontend/
 
 Clone o repositório:
 ```code
-git clone https://github.com/sua-org/diario-enxaqueca-frontend.git
-cd diario-enxaqueca-frontend
+git clone https://github.com/diario-enxaqueca/frontend.git
+cd frontend
 ```
 
 Instale dependências:
@@ -95,16 +70,6 @@ docker-compose up --build
 
 * Frontend disponível em: `http://localhost:3000`
 * Conecta automaticamente ao backend em `http://localhost:8000`
-
-## Funcionalidades – MVP
-| Funcionalidade   | Descrição                                     |
-| ---------------- | --------------------------------------------- |
-| Dashboard        | Lista todos os registros do usuário           |
-| Criar registro   | Formulário com validação de campos            |
-| Editar registro  | Alterar qualquer campo do registro existente  |
-| Excluir registro | Confirmação antes de excluir                  |
-| Feedback         | Mensagens de sucesso/erro após ações          |
-| Protótipo        | Segue cores, fontes, ícones e layout do Figma |
 
 
 ## Contribuição
