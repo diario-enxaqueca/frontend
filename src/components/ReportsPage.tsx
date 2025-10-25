@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   LineChart,
   Line,
@@ -30,14 +30,6 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-
-// Tipos para o jsPDF com autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 interface Episode {
   id: string;
@@ -246,7 +238,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
         ['Intensidade mínima', stats.minIntensity.toString()],
       ];
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Métrica', 'Valor']],
         body: statsData,
@@ -255,7 +247,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
         margin: { left: 14 },
       });
 
-      yPosition = doc.lastAutoTable.finalY + 10;
+      yPosition = (doc as any).lastAutoTable.finalY + 10;
     }
 
     // Top Gatilhos
@@ -267,7 +259,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
 
       const triggersData = stats.topTriggers.map((t) => [t.name, t.usageCount.toString()]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Gatilho', 'Frequência']],
         body: triggersData,
@@ -276,7 +268,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
         margin: { left: 14 },
       });
 
-      yPosition = doc.lastAutoTable.finalY + 10;
+      yPosition = (doc as any).lastAutoTable.finalY + 10;
     }
 
     // Top Medicações
@@ -288,7 +280,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
 
       const medicationsData = stats.topMedications.map((m) => [m.name, m.usageCount.toString()]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Medicação', 'Frequência']],
         body: medicationsData,
@@ -297,7 +289,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
         margin: { left: 14 },
       });
 
-      yPosition = doc.lastAutoTable.finalY + 10;
+      yPosition = (doc as any).lastAutoTable.finalY + 10;
     }
 
     // Lista de Episódios
@@ -325,7 +317,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
         ? ['Data', 'Intensidade', 'Duração', 'Gatilhos', 'Observações']
         : ['Data', 'Intensidade', 'Duração', 'Gatilhos'];
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [headers],
         body: episodesData,

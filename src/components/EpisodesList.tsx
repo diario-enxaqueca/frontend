@@ -4,7 +4,10 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from './ui/pagination';
 import { EpisodeCard } from './EpisodeCard';
+import { EmptyState } from './EmptyState';
+import { BottomNav } from './BottomNav';
 
 interface Episode {
   id: string;
@@ -75,8 +78,6 @@ export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      <Header />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6">
         {/* Header da Página */}
         <div className="flex items-center justify-between mb-6">
