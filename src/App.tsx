@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
+import { ResetPasswordForm } from './components/ResetPasswordForm';
 import { Dashboard } from './components/Dashboard';
 import { EpisodesList } from './components/EpisodesList';
 import { EpisodeForm } from './components/EpisodeForm';
@@ -18,6 +19,7 @@ import { QuickNav } from './components/QuickNav';
 type Page = 
   | 'login' 
   | 'register'
+  | 'reset-password'
   | 'dashboard' 
   | 'episodes' 
   | 'episode-form' 
@@ -34,6 +36,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -46,6 +49,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    console.log('App handleLogout executado');
     setIsAuthenticated(false);
     setCurrentPage('login');
     setSelectedEpisodeId(null);
@@ -77,6 +81,16 @@ export default function App() {
         <RegisterForm 
           onNavigateToLogin={() => setCurrentPage('login')}
           onRegisterSuccess={handleRegister}
+        />
+      );
+    }
+    
+    if (currentPage === 'reset-password') {
+      return (
+        <ResetPasswordForm 
+          token={resetToken || undefined}
+          onResetSuccess={() => setCurrentPage('login')}
+          onBackToLogin={() => setCurrentPage('login')}
         />
       );
     }

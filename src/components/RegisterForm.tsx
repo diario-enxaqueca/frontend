@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Mail, Lock, Eye, EyeOff, Brain, User } from 'lucide-react';
+import api from '../services/apiClient';
 
 interface RegisterFormProps {
   onNavigateToLogin?: () => void;
@@ -33,7 +34,7 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
     return password.length >= 8;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Resetar erros
@@ -81,14 +82,40 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
       return;
     }
     
-    // Lógica de cadastro será implementada posteriormente
-    console.log('Cadastro:', { name, email, password });
-    
-    // Simular sucesso e redirecionar para login
-    if (onRegisterSuccess) {
-      onRegisterSuccess();
+    // // Lógica de cadastro será implementada posteriormente
+    // console.log('Cadastro:', { name, email, password });
+
+    // // Simular sucesso e redirecionar para login
+    // if (onRegisterSuccess) {
+    //   onRegisterSuccess();
+    // }
+
+    try {
+        // chamada para o endpoint do backend
+        const response = await api.post('/auth/register', {
+            nome: name,
+            email: email,
+            senha: password,
+        });
+
+        console.log('Usuário registrado com sucesso:', response.data);
+
+        if (onRegisterSuccess) onRegisterSuccess();
+    } catch (error: any) {
+        if (error.response) {
+            if (error.response.status === 400 || error.response.status === 409) {
+                setEmailError('E-mail já cadastrado');
+            } else {
+                alert(`Erro ao registrar: ${error.response.data.message || 'Tente novamente mais tarde.'}`);
+            }
+        } else {
+            alert('Não foi possível conectar ao servidor.');
+        }
+        console.error('Erro no registro:', error);
     }
   };
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-4">

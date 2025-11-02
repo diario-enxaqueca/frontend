@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -26,9 +26,10 @@ import {
 
 interface ProfileSettingsProps {
   onBack?: () => void;
+  onLogout?: () => void;
 }
 
-export function ProfileSettings({ onBack }: ProfileSettingsProps) {
+export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
   const [name, setName] = useState('João Silva');
   const [email] = useState('joao.silva@email.com');
   const memberSince = '01 de Janeiro de 2025';
@@ -62,6 +63,13 @@ export function ProfileSettings({ onBack }: ProfileSettingsProps) {
   const handleDeleteAccount = () => {
     console.log('Excluir conta');
     // Aqui você implementaria a lógica de exclusão
+  };
+
+  const handleLogout = () => {
+    console.log('ProfileSettings handleLogout chamado');
+    if (onLogout) {
+      onLogout();
+    }
   };
 
   return (
@@ -156,6 +164,48 @@ export function ProfileSettings({ onBack }: ProfileSettingsProps) {
             >
               ALTERAR SENHA
             </Button>
+          </div>
+
+          <Separator className="my-6" />
+
+          {/* Logout Section */}
+          <div className="space-y-4">
+            <h2 className="text-[#333333]">🚪 Sair da Conta</h2>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-12 border-[#E74C3C] text-[#E74C3C] hover:bg-[#E74C3C] hover:text-white gap-2"
+                >
+                  <LogOut className="w-5 h-5" />
+                  SAIR DA CONTA
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar saída</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja sair da sua conta?
+                    <br />
+                    <br />
+                    Você será redirecionado para a tela de login e precisará
+                    fazer login novamente para acessar seus dados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleLogout}
+                    className="bg-[#E74C3C] hover:bg-[#C0392B]"
+                  >
+                    Sair
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <p className="text-[#717182] text-sm text-center">
+              Você será redirecionado para a tela de login
+            </p>
           </div>
 
           <Separator className="my-6" />

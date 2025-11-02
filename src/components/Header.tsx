@@ -1,4 +1,4 @@
-import { Menu, Home, Calendar, Tag, Pill, User, FileText, Search, BarChart3 } from 'lucide-react';
+import { Menu, Home, Calendar, Tag, Pill, User, FileText, Search, BarChart3, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Sheet,
@@ -7,6 +7,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from './ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 
 interface HeaderProps {
   currentPage: string;
@@ -56,13 +67,34 @@ export function Header({ currentPage, onNavigate, onLogout, isMenuOpen, setIsMen
                 </Button>
               );
             })}
-            <Button
-              variant="ghost"
-              onClick={onLogout}
-              className="text-[#E74C3C] hover:text-[#C0392B] ml-2"
-            >
-              Sair
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="gap-2 text-[#E74C3C] hover:text-[#C0392B] hover:bg-red-50 ml-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar saída</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja sair da sua conta? Você precisará fazer login novamente para acessar seus dados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onLogout}
+                    className="bg-[#E74C3C] hover:bg-[#C0392B]"
+                  >
+                    Sair
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </nav>
 
           {/* Menu Mobile Trigger */}
@@ -96,13 +128,34 @@ export function Header({ currentPage, onNavigate, onLogout, isMenuOpen, setIsMen
                     </Button>
                   );
                 })}
-                <Button
-                  variant="ghost"
-                  onClick={onLogout}
-                  className="justify-start gap-2 text-[#E74C3C] hover:text-[#C0392B] mt-4"
-                >
-                  Sair
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="justify-start gap-2 text-[#E74C3C] hover:text-[#C0392B] hover:bg-red-50 mt-4"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      Sair
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmar saída</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja sair da sua conta? Você precisará fazer login novamente para acessar seus dados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={onLogout}
+                        className="bg-[#E74C3C] hover:bg-[#C0392B]"
+                      >
+                        Sair
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </nav>
             </SheetContent>
           </Sheet>

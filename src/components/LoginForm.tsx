@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Mail, Lock, Eye, EyeOff, Brain } from 'lucide-react';
+import api from '../services/apiClient';
 
 interface LoginFormProps {
   onNavigateToRegister?: () => void;
@@ -33,7 +34,7 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     return password.length >= 8;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Resetar erros
@@ -57,7 +58,7 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     if (hasError) {
       return;
     }
-    
+ 
     // Lógica de login será implementada posteriormente
     console.log('Login:', { email, password });
     
@@ -65,6 +66,31 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     if (onLoginSuccess) {
       onLoginSuccess();
     }
+
+//     try {
+//       const response = await api.post('/auth/login', { email, senha: password });
+
+//       if (response.status === 200) {
+//         const token = response.data.access_token;
+
+//         // Armazenar token no localStorage
+//         localStorage.setItem('token', token);
+
+//         if (onLoginSuccess) {
+//           onLoginSuccess();
+//         }
+//       } else {
+//         setPasswordError('Usuário ou senha inválidos');
+//       }
+//     } catch (error: any) {
+//         if (error.response && error.response.status === 401) {
+//         setPasswordError('Usuário ou senha inválidos');
+//         } else {
+//         setPasswordError('Erro ao conectar com o servidor');
+//         }
+//         console.error('Login error:', error);
+//     }
+//   };
   };
 
   const handleForgotPassword = (e: React.MouseEvent) => {
@@ -75,7 +101,7 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     setResetEmailError('');
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     setResetEmailError('');
@@ -86,16 +112,32 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     }
     
     // Simular envio de email de recuperação
-    console.log('Enviar email de recuperação para:', resetEmail);
-    setResetEmailSent(true);
+    // console.log('Enviar email de recuperação para:', resetEmail);
+    // setResetEmailSent(true);
+
+    try {
+        // Supondo que a rota para solicitar reset de senha seja esta:
+        await api.post('/auth/forgot-password', { email: resetEmail });
+
+        setResetEmailSent(true);
     
-    // Fechar o dialog após 3 segundos
-    setTimeout(() => {
-      setShowForgotPasswordDialog(false);
-      setResetEmailSent(false);
-      setResetEmail('');
-    }, 3000);
+        // Fechar o dialog após 3 segundos
+        setTimeout(() => {
+        setShowForgotPasswordDialog(false);
+        setResetEmailSent(false);
+        setResetEmail('');
+        }, 3000);
+    } catch (error: any) {
+        if (error.response) {
+        // Se backend retornar erro, mostra mensagem
+        setResetEmailError(error.response.data.detail || 'Erro ao enviar email de recuperação');
+        } else {
+        setResetEmailError('Erro de conexão com o servidor');
+        }
+        console.error('Erro ao enviar email de recuperação:', error);
+    }
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-4">
@@ -210,72 +252,82 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
       {/* Dialog Esqueci Senha */}
       <Dialog open={showForgotPasswordDialog} onOpenChange={setShowForgotPasswordDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#6C63FF] to-[#FF6F91] rounded-full flex items-center justify-center shadow-md">
-                <Mail className="w-8 h-8 text-white" />
-              </div>
-            </div>
-            <DialogTitle className="text-center">Recuperar Senha</DialogTitle>
-            <DialogDescription className="text-center">
-              Digite seu e-mail para receber instruções de recuperação de senha.
-            </DialogDescription>
-          </DialogHeader>
-
           {!resetEmailSent ? (
-            <form onSubmit={handleResetPassword} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="resetEmail" className="text-[#333333]">
-                  E-mail
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#717182]" />
-                  <Input
-                    id="resetEmail"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    className="pl-10 h-12 border-gray-300 focus:border-[#6C63FF] focus:ring-[#6C63FF] transition-colors"
-                    required
-                    aria-label="Email para recuperação"
-                  />
+            <>
+              <DialogHeader>
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-[#6C63FF] to-[#FF6F91] rounded-full flex items-center justify-center shadow-md">
+                    <Mail className="w-8 h-8 text-white" />
+                  </div>
                 </div>
-                {resetEmailError && <p className="text-red-500 text-sm">{resetEmailError}</p>}
-              </div>
+                <DialogTitle className="text-center">Recuperar Senha</DialogTitle>
+                <DialogDescription className="text-center">
+                  Digite seu e-mail para receber instruções de recuperação de senha.
+                </DialogDescription>
+              </DialogHeader>
 
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowForgotPasswordDialog(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 bg-[#6C63FF] hover:bg-[#5850E6] text-white"
-                >
-                  Enviar
-                </Button>
-              </div>
-            </form>
+              <form onSubmit={handleResetPassword} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="resetEmail" className="text-[#333333]">
+                    E-mail
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#717182]" />
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="pl-10 h-12 border-gray-300 focus:border-[#6C63FF] focus:ring-[#6C63FF] transition-colors"
+                      required
+                      aria-label="Email para recuperação"
+                    />
+                  </div>
+                  {resetEmailError && <p className="text-red-500 text-sm">{resetEmailError}</p>}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                    <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowForgotPasswordDialog(false)}
+                    className="flex-1"
+                    >
+                    Cancelar
+                    </Button>
+                    <Button
+                    type="submit"
+                    className="flex-1 bg-[#6C63FF] hover:bg-[#5850E6] text-white"
+                    >
+                    Enviar
+                    </Button>
+                </div>
+                </form>
+            </>
           ) : (
-            <div className="text-center py-6 space-y-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-[#333333] font-medium mb-2">E-mail enviado!</p>
-                <p className="text-[#717182] text-sm">
+            <>
+              <DialogHeader>
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <DialogTitle className="text-center">E-mail Enviado!</DialogTitle>
+                <DialogDescription className="text-center">
                   Enviamos instruções de recuperação para<br />
-                  <strong>{resetEmail}</strong>
+                  <strong className="text-[#333333]">{resetEmail}</strong>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="pt-4 text-center">
+                <p className="text-sm text-[#717182]">
+                  Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
                 </p>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
