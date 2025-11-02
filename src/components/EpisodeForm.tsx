@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form@7.55.0';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,36 +15,78 @@ import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 
+import api from '../services/apiClient'; // importe seu apiClient configurado para backend
+
+
 // Schema de validação
 const episodeSchema = z.object({
   date: z.date({
     required_error: 'Data é obrigatória',
   }).refine(
     (date) => date <= new Date(),
-    { message: 'Data não pode ser futura' } // BR-008
+    { message: 'Data não pode ser futura' }
   ),
-  intensity: z.number().min(0, 'Intensidade mínima é 0').max(10, 'Intensidade máxima é 10'), // BR-009
-  duration: z.number().min(0, 'Duração não pode ser negativa').optional(), // BR-010
+  intensity: z.number().min(0, 'Intensidade mínima é 0').max(10, 'Intensidade máxima é 10'),
+  duration: z.number().min(0, 'Duração não pode ser negativa').optional(),
   triggers: z.array(z.string()),
   medications: z.array(z.string()),
-  notes: z.string().max(500, 'Observações excedem 500 caracteres').optional(), // BR-013
+  notes: z.string().max(500, 'Observações excedem 500 caracteres').optional(),
 });
 
+
 type EpisodeFormData = z.infer<typeof episodeSchema>;
+
 
 interface EpisodeFormProps {
   episodeId?: string | null;
   onBack?: () => void;
 }
 
+
 export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
   const [intensity, setIntensity] = useState(5);
-  const [customTriggers, setCustomTriggers] = useState<string[]>([]);
-  const [customMedications, setCustomMedications] = useState<string[]>([]);
+  const [existingTriggers, setExistingTriggers] = useState<{id: number, nome: string}[]>([]);
+  const [existingMedications, setExistingMedications] = useState<{id: number, nome: string}[]>([]);
+  const [triggerMap, setTriggerMap] = useState<Record<string, number>>({});
+  const [medicationMap, setMedicationMap] = useState<Record<string, number>>({});
   const [showTriggerDialog, setShowTriggerDialog] = useState(false);
   const [showMedicationDialog, setShowMedicationDialog] = useState(false);
   const [newTrigger, setNewTrigger] = useState('');
   const [newMedication, setNewMedication] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Função para carregar gatilhos e medicações do backend
+//   useEffect(() => {
+    // async function loadMaps() {
+    async function loadExisting() {
+      try {
+        const gatilhos = await api.get('/gatilhos/');
+        setExistingTriggers(gatilhos.data);
+
+        const meds = await api.get('/medicacoes/');
+        setExistingMedications(meds.data);
+
+        const tMap: Record<string, number> = {};
+        gatilhos.data.forEach((g: any) => {
+            tMap[g.nome] = g.id;
+        });
+        setTriggerMap(tMap);
+
+        const mMap: Record<string, number> = {};
+        meds.data.forEach((m: any) => {
+            mMap[m.nome] = m.id;
+        });
+        setMedicationMap(mMap);
+      } catch (err) {
+        console.error("Erro ao carregar gatilhos/medicações:", err);
+      }
+    }
+    // loadMaps();
+
+  useEffect(() => {
+    loadExisting();
+  }, []);
 
   const {
     register,
@@ -64,23 +106,23 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
     mode: 'onChange',
   });
 
+
   const selectedDate = watch('date');
   const selectedTriggers = watch('triggers') || [];
   const selectedMedications = watch('medications') || [];
   const notes = watch('notes') || '';
 
-  const defaultTriggers = [
-    'Estresse',
-    'Falta de sono',
-    'Chocolate',
-    'Café',
-    'Luz forte',
-  ];
 
-  const defaultMedications = ['Paracetamol', 'Ibuprofeno'];
+//   const defaultTriggers = [
+//     'Estresse',
+//     'Falta de sono',
+//     'Chocolate',
+//     'Café',
+//     'Luz forte',
+//   ];
 
-  const allTriggers = [...defaultTriggers, ...customTriggers];
-  const allMedications = [...defaultMedications, ...customMedications];
+
+//   const defaultMedications = ['Paracetamol', 'Ibuprofeno'];
 
   const getIntensityColor = (value: number) => {
     const percentage = value / 10;
@@ -90,19 +132,49 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
     return '#E74C3C';
   };
 
-  const handleAddTrigger = () => {
-    if (newTrigger.trim() && !allTriggers.includes(newTrigger.trim())) {
-      setCustomTriggers([...customTriggers, newTrigger.trim()]);
-      setNewTrigger('');
-      setShowTriggerDialog(false);
+
+//   const handleAddTrigger = () => {
+//     if (newTrigger.trim() && !allTriggers.includes(newTrigger.trim())) {
+//       setCustomTriggers([...customTriggers, newTrigger.trim()]);
+//       setNewTrigger('');
+//       setShowTriggerDialog(false);
+//     }
+//   };
+
+
+//   const handleAddMedication = () => {
+//     if (newMedication.trim() && !allMedications.includes(newMedication.trim())) {
+//       setCustomMedications([...customMedications, newMedication.trim()]);
+//       setNewMedication('');
+//       setShowMedicationDialog(false);
+//     }
+//   };
+
+  // Ao adicionar gatilho com sucesso:
+  const handleAddTrigger = async () => {
+    if (newTrigger.trim() && !existingTriggers.some(t => t.nome === newTrigger.trim())) {
+      try {
+        await api.post('/gatilhos/', {nome: newTrigger.trim()});
+        setNewTrigger('');
+        setShowTriggerDialog(false);
+        await loadExisting();  // recarrega a lista para atualizar UI
+      } catch (error) {
+        console.error('Erro ao adicionar gatilho', error);
+      }
     }
   };
 
-  const handleAddMedication = () => {
-    if (newMedication.trim() && !allMedications.includes(newMedication.trim())) {
-      setCustomMedications([...customMedications, newMedication.trim()]);
-      setNewMedication('');
-      setShowMedicationDialog(false);
+  // Similar para medicações
+  const handleAddMedication = async () => {
+    if (newMedication.trim() && !existingMedications.some(m => m.nome === newMedication.trim())) {
+      try {
+        await api.post('/medicacoes/', {nome: newMedication.trim(), dosagem: ""});
+        setNewMedication('');
+        setShowMedicationDialog(false);
+        await loadExisting();  // recarrega lista meds
+      } catch (error) {
+        console.error('Erro ao adicionar medicação', error);
+      }
     }
   };
 
@@ -114,6 +186,7 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
     setValue('triggers', updated, { shouldValidate: true });
   };
 
+
   const toggleMedication = (medication: string) => {
     const current = selectedMedications;
     const updated = current.includes(medication)
@@ -122,10 +195,42 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
     setValue('medications', updated, { shouldValidate: true });
   };
 
-  const onSubmit = (data: EpisodeFormData) => {
-    console.log('Episódio salvo:', data);
-    // Aqui você implementaria a lógica de salvar
+
+  const onSubmit = async (data: EpisodeFormData) => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      // Converte nomes para ids
+      const gatilhosIds = selectedTriggers
+        .map(name => triggerMap[name])
+        .filter(id => id !== undefined);
+      const medicacoesIds = selectedMedications
+        .map(name => medicationMap[name])
+        .filter(id => id !== undefined);
+
+      // Prepare payload conforme backend espera
+      const payload = {
+        data: data.date.toISOString().split('T')[0], // yyyy-MM-dd
+        intensidade: data.intensity,
+        duracao: data.duration ?? null,
+        observacoes: data.notes ?? null,
+        gatilhos: gatilhosIds,
+        medicacoes: medicacoesIds,
+      };
+
+      console.log(payload);
+      const response = await api.post('/episodios/', payload);
+
+      setSuccessMessage('Episódio salvo com sucesso!');
+      console.log('Resposta do backend:', response.data);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error: any) {
+      console.error('Erro ao salvar episódio:', error);
+      setErrorMessage('Erro ao salvar episódio. Tente novamente.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
+
 
   const handleBack = () => {
     if (onBack) {
@@ -135,9 +240,11 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
     }
   };
 
+
   const handleCancel = () => {
     console.log('Cancelar');
   };
+
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -145,21 +252,11 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleBack}
-              aria-label="Voltar"
-            >
+            <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Voltar">
               <ArrowLeft className="w-5 h-5 text-[#333333]" />
             </Button>
             <h1 className="text-[#333333]">Novo Episódio</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCancel}
-              aria-label="Cancelar"
-            >
+            <Button variant="ghost" size="icon" onClick={handleCancel} aria-label="Cancelar">
               <X className="w-5 h-5 text-[#717182]" />
             </Button>
           </div>
@@ -168,6 +265,8 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
 
       {/* Form */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+        {errorMessage && <p className="text-red-600 mb-4 font-semibold">{errorMessage}</p>}
+        {successMessage && <p className="text-green-600 mb-4 font-semibold">{successMessage}</p>}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Data do Episódio */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -181,11 +280,7 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
                   className="w-full justify-start text-left h-12 border-[#BDC3C7] hover:border-[#6C63FF]"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4 text-[#717182]" />
-                  {selectedDate ? (
-                    format(selectedDate, "dd/MM/yyyy", { locale: ptBR })
-                  ) : (
-                    <span className="text-[#717182]">Selecione uma data</span>
-                  )}
+                  {selectedDate ? format(selectedDate, "dd/MM/yyyy", { locale: ptBR }) : <span className="text-[#717182]">Selecione uma data</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -197,29 +292,18 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
                 />
               </PopoverContent>
             </Popover>
-            {errors.date && (
-              <p className="text-red-500 mt-2">{errors.date.message}</p>
-            )}
+            {errors.date && <p className="text-red-500 mt-2">{errors.date.message}</p>}
           </div>
 
           {/* Intensidade */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <Label className="text-[#333333] mb-3 block">
-              📊 Intensidade da Dor <span className="text-red-500">*</span>{' '}
-              <span className="text-[#717182]">(0 = leve, 10 = extrema)</span>
+              📊 Intensidade da Dor <span className="text-red-500">*</span> <span className="text-[#717182]">(0 = leve, 10 = extrema)</span>
             </Label>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[#717182]">0</span>
-                <span
-                  className="px-4 py-2 rounded-lg"
-                  style={{
-                    backgroundColor: getIntensityColor(intensity),
-                    color: 'white',
-                  }}
-                >
-                  {intensity}
-                </span>
+                <span className="px-4 py-2 rounded-lg" style={{ backgroundColor: getIntensityColor(intensity), color: 'white' }}>{intensity}</span>
                 <span className="text-[#717182]">10</span>
               </div>
               <Slider
@@ -237,45 +321,26 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
 
           {/* Duração */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
-            <Label htmlFor="duration" className="text-[#333333] mb-3 block">
-              ⏱️ Duração (em minutos)
-            </Label>
-            <Input
-              id="duration"
-              type="number"
-              min="0"
-              placeholder="Ex: 120"
-              {...register('duration', { valueAsNumber: true })}
-              className="h-12 border-[#BDC3C7] focus:border-[#6C63FF]"
-            />
+            <Label htmlFor="duration" className="text-[#333333] mb-3 block">⏱️ Duração (em minutos)</Label>
+            <Input id="duration" type="number" min="0" placeholder="Ex: 120" {...register('duration', { valueAsNumber: true })} className="h-12 border-[#BDC3C7] focus:border-[#6C63FF]" />
           </div>
 
           {/* Gatilhos */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <Label className="text-[#333333] mb-3 block">🔥 Gatilhos</Label>
             <div className="space-y-3 mb-4">
-              {allTriggers.map((trigger) => (
-                <div key={trigger} className="flex items-center space-x-3">
+              {existingTriggers.map(trigger => (
+                <div key={trigger.id} className="flex items-center space-x-3">
                   <Checkbox
-                    id={`trigger-${trigger}`}
-                    checked={selectedTriggers.includes(trigger)}
-                    onCheckedChange={() => toggleTrigger(trigger)}
+                    id={`trigger-${trigger.nome}`}
+                    checked={selectedTriggers.includes(trigger.nome)}
+                    onCheckedChange={() => toggleTrigger(trigger.nome)}
                   />
-                  <label
-                    htmlFor={`trigger-${trigger}`}
-                    className="text-[#333333] cursor-pointer flex-1"
-                  >
-                    {trigger}
-                  </label>
+                  <label htmlFor={`trigger-${trigger.nome}`} className="text-[#333333] cursor-pointer flex-1">{trigger.nome}</label>
                 </div>
               ))}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowTriggerDialog(true)}
-              className="w-full border-[#6C63FF] text-[#6C63FF] hover:bg-[#6C63FF] hover:text-white"
-            >
+            <Button type="button" variant="outline" onClick={() => setShowTriggerDialog(true)} className="w-full border-[#6C63FF] text-[#6C63FF] hover:bg-[#6C63FF] hover:text-white">
               <Plus className="w-4 h-4 mr-2" />
               Novo gatilho
             </Button>
@@ -285,28 +350,18 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <Label className="text-[#333333] mb-3 block">💊 Medicações</Label>
             <div className="space-y-3 mb-4">
-              {allMedications.map((medication) => (
-                <div key={medication} className="flex items-center space-x-3">
+              {existingMedications.map(medication => (
+                <div key={medication.id} className="flex items-center space-x-3">
                   <Checkbox
-                    id={`medication-${medication}`}
-                    checked={selectedMedications.includes(medication)}
-                    onCheckedChange={() => toggleMedication(medication)}
+                    id={`medication-${medication.nome}`}
+                    checked={selectedMedications.includes(medication.nome)}
+                    onCheckedChange={() => toggleMedication(medication.nome)}
                   />
-                  <label
-                    htmlFor={`medication-${medication}`}
-                    className="text-[#333333] cursor-pointer flex-1"
-                  >
-                    {medication}
-                  </label>
+                  <label htmlFor={`medication-${medication.nome}`} className="text-[#333333] cursor-pointer flex-1">{medication.nome}</label>
                 </div>
               ))}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowMedicationDialog(true)}
-              className="w-full border-[#6C63FF] text-[#6C63FF] hover:bg-[#6C63FF] hover:text-white"
-            >
+            <Button type="button" variant="outline" onClick={() => setShowMedicationDialog(true)} className="w-full border-[#6C63FF] text-[#6C63FF] hover:bg-[#6C63FF] hover:text-white">
               <Plus className="w-4 h-4 mr-2" />
               Nova medicação
             </Button>
@@ -314,32 +369,16 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
 
           {/* Observações */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
-            <Label htmlFor="notes" className="text-[#333333] mb-3 block">
-              📝 Observações
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Digite aqui observações adicionais sobre o episódio..."
-              {...register('notes')}
-              className="min-h-32 border-[#BDC3C7] focus:border-[#6C63FF] resize-none"
-              maxLength={500}
-            />
+            <Label htmlFor="notes" className="text-[#333333] mb-3 block">📝 Observações</Label>
+            <Textarea id="notes" placeholder="Digite aqui observações adicionais sobre o episódio..." {...register('notes')} className="min-h-32 border-[#BDC3C7] focus:border-[#6C63FF] resize-none" maxLength={500} />
             <div className="flex justify-end mt-2">
-              <span className="text-[#717182]">
-                {notes.length}/500 caracteres
-              </span>
+              <span className="text-[#717182]">{notes.length}/500 caracteres</span>
             </div>
-            {errors.notes && (
-              <p className="text-red-500 mt-2">{errors.notes.message}</p>
-            )}
+            {errors.notes && <p className="text-red-500 mt-2">{errors.notes.message}</p>}
           </div>
 
           {/* Botão Submit */}
-          <Button
-            type="submit"
-            disabled={!isValid}
-            className="w-full h-14 bg-[#6C63FF] hover:bg-[#5850E6] text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button type="submit" disabled={!isValid} className="w-full h-14 bg-[#6C63FF] hover:bg-[#5850E6] text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
             SALVAR EPISÓDIO
           </Button>
         </form>
@@ -352,9 +391,7 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
             <DialogTitle>Adicionar Novo Gatilho</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="new-trigger" className="mb-2 block">
-              Nome do gatilho
-            </Label>
+            <Label htmlFor="new-trigger" className="mb-2 block">Nome do gatilho</Label>
             <Input
               id="new-trigger"
               value={newTrigger}
@@ -370,18 +407,8 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
             />
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowTriggerDialog(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAddTrigger}
-              className="bg-[#6C63FF] hover:bg-[#5850E6]"
-            >
-              Adicionar
-            </Button>
+            <Button variant="outline" onClick={() => setShowTriggerDialog(false)}>Cancelar</Button>
+            <Button onClick={handleAddTrigger} className="bg-[#6C63FF] hover:bg-[#5850E6]">Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -393,9 +420,7 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
             <DialogTitle>Adicionar Nova Medicação</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="new-medication" className="mb-2 block">
-              Nome da medicação
-            </Label>
+            <Label htmlFor="new-medication" className="mb-2 block">Nome da medicação</Label>
             <Input
               id="new-medication"
               value={newMedication}
@@ -411,18 +436,8 @@ export function EpisodeForm({ episodeId, onBack }: EpisodeFormProps) {
             />
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowMedicationDialog(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAddMedication}
-              className="bg-[#6C63FF] hover:bg-[#5850E6]"
-            >
-              Adicionar
-            </Button>
+            <Button variant="outline" onClick={() => setShowMedicationDialog(false)}>Cancelar</Button>
+            <Button onClick={handleAddMedication} className="bg-[#6C63FF] hover:bg-[#5850E6]">Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
