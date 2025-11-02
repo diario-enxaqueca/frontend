@@ -49,10 +49,15 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    console.log('App handleLogout executado');
+    console.log('=== App handleLogout INICIADO ===');
+    console.log('Estado antes:', { isAuthenticated, currentPage });
+    
     setIsAuthenticated(false);
     setCurrentPage('login');
     setSelectedEpisodeId(null);
+    
+    console.log('Estado atualizado para:', { isAuthenticated: false, currentPage: 'login' });
+    console.log('=== App handleLogout CONCLUÍDO ===');
   };
 
   const navigateTo = (page: Page) => {
@@ -74,7 +79,7 @@ export default function App() {
     setCurrentPage('episode-form');
   };
 
-  // Se não autenticado, mostra login ou registro
+  // Se não autenticado, mostra login, registro ou reset de senha
   if (!isAuthenticated) {
     if (currentPage === 'register') {
       return (
@@ -131,7 +136,7 @@ export default function App() {
         return <MedicationsManagement onBack={() => navigateTo('dashboard')} />;
       
       case 'profile':
-        return <ProfileSettings onBack={() => navigateTo('dashboard')} />;
+        return <ProfileSettings onBack={() => navigateTo('dashboard')} onLogout={handleLogout} />;
       
       case 'reports':
         return <ReportsPage onBack={() => navigateTo('dashboard')} />;

@@ -35,6 +35,7 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
   const memberSince = '01 de Janeiro de 2025';
 
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -65,10 +66,19 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
     // Aqui você implementaria a lógica de exclusão
   };
 
-  const handleLogout = () => {
+  const handleLogout = (e?: React.MouseEvent) => {
+    e?.preventDefault();
     console.log('ProfileSettings handleLogout chamado');
+    console.log('onLogout existe?', !!onLogout);
+    
+    setShowLogoutDialog(false); // Fecha o dialog
+    
     if (onLogout) {
+      console.log('Chamando onLogout...');
       onLogout();
+      console.log('onLogout chamado com sucesso');
+    } else {
+      console.error('onLogout não está definido!');
     }
   };
 
@@ -171,7 +181,7 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
           {/* Logout Section */}
           <div className="space-y-4">
             <h2 className="text-[#333333]">🚪 Sair da Conta</h2>
-            <AlertDialog>
+            <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
