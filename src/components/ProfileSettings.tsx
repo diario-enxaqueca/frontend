@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, User, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -23,16 +23,39 @@ import {
   DialogTitle,
   DialogFooter,
 } from './ui/dialog';
+import { fetchUserProfile } from "../services/apiClient";
 
 interface ProfileSettingsProps {
   onBack?: () => void;
   onLogout?: () => void;
+  userName?: string;
 }
 
-export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
-  const [name, setName] = useState('João Silva');
-  const [email] = useState('joao.silva@email.com');
-  const memberSince = '01 de Janeiro de 2025';
+export function ProfileSettings({ onBack, onLogout, userName }: ProfileSettingsProps) {
+//   const [name, setName] = useState(userName || 'João Silva');
+//   const [email] = useState('joao.silva@email.com');
+//   const memberSince = '01 de Janeiro de 2025';
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [memberSince, setMemberSince] = useState("Carregando...");
+
+  useEffect(() => {
+  async function loadUser() {
+      try {
+        const userData = await fetchUserProfile();
+        setName(userData.nome);
+        setEmail(userData.email);
+        if (userData.data_cadastro) {
+          const date = new Date(userData.data_cadastro);
+          setMemberSince(date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar perfil:", error);
+      }
+    }
+    loadUser();
+  }, []);
 
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);

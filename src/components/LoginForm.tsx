@@ -59,38 +59,38 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
       return;
     }
  
-    // Lógica de login será implementada posteriormente
-    console.log('Login:', { email, password });
+    // // Lógica de login será implementada posteriormente
+    // console.log('Login:', { email, password });
     
-    // Simular sucesso
-    if (onLoginSuccess) {
-      onLoginSuccess();
+    // // Simular sucesso
+    // if (onLoginSuccess) {
+    //   onLoginSuccess();
+    // }
+
+    try {
+      const response = await api.post('/auth/login', { email, senha: password });
+
+      if (response.status === 200) {
+        const token = response.data.access_token;
+
+        // Armazenar token no localStorage
+        localStorage.setItem('token', token);
+
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+      } else {
+        setPasswordError('Usuário ou senha inválidos');
+      }
+    } catch (error: any) {
+        if (error.response && error.response.status === 401) {
+        setPasswordError('Usuário ou senha inválidos');
+        } else {
+        setPasswordError('Erro ao conectar com o servidor');
+        }
+        console.error('Login error:', error);
     }
 
-//     try {
-//       const response = await api.post('/auth/login', { email, senha: password });
-
-//       if (response.status === 200) {
-//         const token = response.data.access_token;
-
-//         // Armazenar token no localStorage
-//         localStorage.setItem('token', token);
-
-//         if (onLoginSuccess) {
-//           onLoginSuccess();
-//         }
-//       } else {
-//         setPasswordError('Usuário ou senha inválidos');
-//       }
-//     } catch (error: any) {
-//         if (error.response && error.response.status === 401) {
-//         setPasswordError('Usuário ou senha inválidos');
-//         } else {
-//         setPasswordError('Erro ao conectar com o servidor');
-//         }
-//         console.error('Login error:', error);
-//     }
-//   };
   };
 
   const handleForgotPassword = (e: React.MouseEvent) => {

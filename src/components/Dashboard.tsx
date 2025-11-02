@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { StatsCard } from './StatsCard';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -5,12 +6,42 @@ import { Activity, Calendar, Clock, Plus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FileText } from 'lucide-react';
 import { BarChart3, Search } from 'lucide-react';
+import { fetchUserProfile } from "../services/apiClient";
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
+  userName?: string;
 }
 
-export function Dashboard({ onNavigate }: DashboardProps) {
+export function Dashboard({ onNavigate, userName }: DashboardProps) {
+  const [currentUserName, setCurrentUserName] = useState("");
+
+    // Função para obter saudação baseada no horário
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Bom dia';
+    if (hour >= 12 && hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
+  // Buscar o nome real do usuário no backend ao montar componente
+  useEffect(() => {
+    async function loadUserName() {
+      try {
+        const userData = await fetchUserProfile();
+        setCurrentUserName(userData.nome);
+      } catch (error) {
+        console.error("Erro ao carregar nome do usuário:", error);
+      }
+    }
+    if (!currentUserName) {
+      loadUserName();
+    }
+  }, [currentUserName]);
+
+  // Pega o primeiro nome
+  const firstName = currentUserName?.split(' ')[0] || 'Usuário';
+
   // Dados do gráfico - últimos 6 meses
   const chartData = [
     { month: 'Mai', episodios: 12 },
@@ -33,6 +64,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-0">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6">
+        {/* Welcome Message */}
+        <div className="mb-8">
+          <h1 className="text-[#333333] mb-2">
+            {getGreeting()}, {firstName}! 👋
+          </h1>
+          <p className="text-[#717182]">
+            Aqui está o resumo do seu Diário de Enxaqueca
+          </p>
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard

@@ -34,12 +34,14 @@ type Page =
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userName, setUserName] = useState<string>('');
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
-  const handleLogin = () => {
+  const handleLogin = (name?: string) => {
     setIsAuthenticated(true);
+    setUserName(name || 'João Silva'); // Nome padrão se não for fornecido
     setCurrentPage('dashboard');
   };
 
@@ -53,6 +55,7 @@ export default function App() {
     console.log('Estado antes:', { isAuthenticated, currentPage });
     
     setIsAuthenticated(false);
+    setUserName('');
     setCurrentPage('login');
     setSelectedEpisodeId(null);
     
@@ -112,7 +115,7 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNavigate={navigateTo} />;
+        return <Dashboard onNavigate={navigateTo} userName={userName} />;
       
       case 'episodes':
         return <EpisodesList onViewEpisode={handleViewEpisode} onNavigate={navigateTo} />;
@@ -136,7 +139,7 @@ export default function App() {
         return <MedicationsManagement onBack={() => navigateTo('dashboard')} />;
       
       case 'profile':
-        return <ProfileSettings onBack={() => navigateTo('dashboard')} onLogout={handleLogout} />;
+        return <ProfileSettings onBack={() => navigateTo('dashboard')} onLogout={handleLogout} userName={userName} />;
       
       case 'reports':
         return <ReportsPage onBack={() => navigateTo('dashboard')} />;
