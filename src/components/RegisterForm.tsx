@@ -4,7 +4,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Mail, Lock, Eye, EyeOff, Brain, User } from 'lucide-react';
-import api from '../services/apiClient';
+import { useAuth } from '../contexts/AuthContext';
+import type { UserCreate } from '../lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 
 interface RegisterFormProps {
   onNavigateToLogin?: () => void;
@@ -12,6 +14,8 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterFormProps) {
+  const { register } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
@@ -22,36 +26,32 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // BR-002: Validação de formato de email
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   };
 
-  // BR-003: Senha deve ter no mínimo 8 caracteres
   const validatePassword = (password: string): boolean => {
     return password.length >= 8;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Resetar erros
+
     setNameError('');
     setEmailError('');
     setPasswordError('');
     setConfirmPasswordError('');
-    
+
     let hasError = false;
-    
-    // BR-033: Validar campos obrigatórios
+
     if (!name.trim()) {
       setNameError('Campo Nome é obrigatório');
       hasError = true;
     }
-    
-    // Validar email
+
     if (!email.trim()) {
       setEmailError('Campo E-mail é obrigatório');
       hasError = true;
@@ -59,8 +59,7 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
       setEmailError('Formato de e-mail inválido');
       hasError = true;
     }
-    
-    // Validar senha
+
     if (!password) {
       setPasswordError('Campo Senha é obrigatório');
       hasError = true;
@@ -68,8 +67,7 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
       setPasswordError('Senha deve ter no mínimo 8 caracteres');
       hasError = true;
     }
-    
-    // Validar confirmação de senha
+
     if (!confirmPassword) {
       setConfirmPasswordError('Confirmação de senha é obrigatória');
       hasError = true;
@@ -77,45 +75,35 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
       setConfirmPasswordError('As senhas não coincidem');
       hasError = true;
     }
-    
+
     if (hasError) {
       return;
     }
-    
-    // // Lógica de cadastro será implementada posteriormente
-    // console.log('Cadastro:', { name, email, password });
-
-    // // Simular sucesso e redirecionar para login
-    // if (onRegisterSuccess) {
-    //   onRegisterSuccess();
-    // }
 
     try {
-        // chamada para o endpoint do backend
-        const response = await api.post('/auth/register', {
-            nome: name,
-            email: email,
-            senha: password,
-        });
+      const data: UserCreate = {
+        nome: name,
+        email: email,
+        senha: password,
+      };
 
-        console.log('Usuário registrado com sucesso:', response.data);
+      await register(data);
 
-        if (onRegisterSuccess) onRegisterSuccess();
+      setShowSuccessModal(true);
+      
     } catch (error: any) {
-        if (error.response) {
-            if (error.response.status === 400 || error.response.status === 409) {
-                setEmailError('E-mail já cadastrado');
-            } else {
-                alert(`Erro ao registrar: ${error.response.data.message || 'Tente novamente mais tarde.'}`);
-            }
+      if (error.response) {
+        if (error.response.status === 400 || error.response.status === 409) {
+          setEmailError('E-mail já cadastrado');
         } else {
-            alert('Não foi possível conectar ao servidor.');
+          alert(`Erro ao registrar: ${error.response.data.message || 'Tente novamente mais tarde.'}`);
         }
-        console.error('Erro no registro:', error);
+      } else {
+        alert('Não foi possível conectar ao servidor.');
+      }
+      console.error('Erro no registro:', error);
     }
   };
-
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-4">
@@ -127,7 +115,7 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
               <Brain className="w-8 h-8 text-white" />
             </div>
           </div>
-          
+
           {/* Título */}
           <div>
             <h1 className="text-[#333333] mb-2">Crie sua conta</h1>
@@ -297,6 +285,36 @@ export function RegisterForm({ onNavigateToLogin, onRegisterSuccess }: RegisterF
           </form>
         </CardContent>
       </Card>
+
+      {/* Modal de Sucesso */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                </div>
+            </div>
+            <DialogTitle className="text-center">Cadastro realizado com sucesso!</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            Parabéns, sua conta foi criada.<br />
+            Agora você pode fazer login.
+          </div>
+          <DialogFooter>
+            <Button
+                onClick={() => {
+                setShowSuccessModal(false);
+                if (onNavigateToLogin) onNavigateToLogin();
+                }}
+            >
+                Ir para Login
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

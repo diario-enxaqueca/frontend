@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Mail, Lock, Eye, EyeOff, Brain } from 'lucide-react';
-import api from '../services/apiClient';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LoginFormProps {
   onNavigateToRegister?: () => void;
@@ -13,6 +13,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormProps) {
+  const { login, resetPassword } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,8 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
   const [resetEmail, setResetEmail] = useState('');
   const [resetEmailError, setResetEmailError] = useState('');
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
 
   // BR-002: Validação de formato de email
   const validateEmail = (email: string): boolean => {
@@ -68,20 +71,10 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     // }
 
     try {
-      const response = await api.post('/auth/login', { email, senha: password });
-
-      if (response.status === 200) {
-        const token = response.data.access_token;
-
-        // Armazenar token no localStorage
-        localStorage.setItem('token', token);
-
+        await login({ nome: email, email, senha: password });
         if (onLoginSuccess) {
           onLoginSuccess();
         }
-      } else {
-        setPasswordError('Usuário ou senha inválidos');
-      }
     } catch (error: any) {
         if (error.response && error.response.status === 401) {
         setPasswordError('Usuário ou senha inválidos');
@@ -90,7 +83,6 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
         }
         console.error('Login error:', error);
     }
-
   };
 
   const handleForgotPassword = (e: React.MouseEvent) => {
@@ -103,11 +95,14 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (isSending) return;
+
+    setIsSending(true);
     setResetEmailError('');
     
     if (!validateEmail(resetEmail)) {
       setResetEmailError('Formato de e-mail inválido');
+      setIsSending(false);
       return;
     }
     
@@ -116,16 +111,14 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     // setResetEmailSent(true);
 
     try {
-        // Supondo que a rota para solicitar reset de senha seja esta:
-        await api.post('/auth/forgot-password', { email: resetEmail });
-
+        await resetPassword({ email: resetEmail });
         setResetEmailSent(true);
-    
         // Fechar o dialog após 3 segundos
         setTimeout(() => {
         setShowForgotPasswordDialog(false);
         setResetEmailSent(false);
         setResetEmail('');
+        setIsSending(false);
         }, 3000);
     } catch (error: any) {
         if (error.response) {
@@ -228,8 +221,9 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
             <Button
               type="submit"
               className="w-full h-12 bg-[#6C63FF] hover:bg-[#5850E6] text-white shadow-md transition-all duration-200 hover:shadow-lg"
+              disabled={isSending}
             >
-              ENTRAR
+              {isSending ? 'Enviando...' : 'ENTRAR'}  
             </Button>
 
             {/* Link Cadastro */}
