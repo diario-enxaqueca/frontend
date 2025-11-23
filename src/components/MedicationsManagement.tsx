@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Edit, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
@@ -21,6 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
+import { getMedicacoes, createMedicacao, updateMedicacao, deleteMedicacao } from '../services/apiClient';
+import type { MedicacaoOut } from '../lib/types';
 
 interface Medication {
   id: string;
@@ -34,20 +36,33 @@ interface MedicationsManagementProps {
 }
 
 export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
-  const [medications, setMedications] = useState<Medication[]>([
-    { id: '1', name: 'Paracetamol', dosage: '500mg', usageCount: 15 },
-    { id: '2', name: 'Ibuprofeno', dosage: '400mg', usageCount: 10 },
-    { id: '3', name: 'Dipirona', dosage: '1g', usageCount: 8 },
-    { id: '4', name: 'Sumatriptano', dosage: '50mg', usageCount: 6 },
-    { id: '5', name: 'Naproxeno', dosage: '500mg', usageCount: 4 },
-  ]);
-
+  const [medications, setMedications] = useState<MedicacaoOut[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
-  const [medicationToDelete, setMedicationToDelete] = useState<Medication | null>(null);
+  const [editingMedication, setEditingMedication] = useState<MedicacaoOut | null>(null);
+  const [medicationToDelete, setMedicationToDelete] = useState<MedicacaoOut | null>(null);
   const [medicationName, setMedicationName] = useState('');
   const [medicationDosage, setMedicationDosage] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchMedications();
+  }, []);
+
+  const fetchMedications = async () => {
+    try {
+      setLoading(true);
+      const data = await getMedicacoes();
+      setMedications(data);
+    } catch (err: any) {
+      console.error('Erro ao buscar medicações:', err);
+      setError('Erro ao carregar medicações');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBack = () => {
     if (onBack) {
@@ -62,69 +77,81 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
     setShowDialog(true);
   };
 
-  const handleEdit = (medication: Medication) => {
+  const handleEdit = (medication: MedicacaoOut) => {
     setEditingMedication(medication);
-    setMedicationName(medication.name);
-    setMedicationDosage(medication.dosage || '');
+    setMedicationName(medication.nome);
+    setMedicationDosage(medication.dosagem || '');
     setShowDialog(true);
   };
 
-  const handleDelete = (medication: Medication) => {
+  const handleDelete = (medication: MedicacaoOut) => {
     setMedicationToDelete(medication);
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (medicationToDelete) {
-      setMedications(medications.filter((m) => m.id !== medicationToDelete.id));
-      setMedicationToDelete(null);
-      setShowDeleteDialog(false);
+      try {
+        await deleteMedicacao(medicationToDelete.id);
+        setMedications(medications.filter((m) => m.id !== medicationToDelete.id));
+        setMedicationToDelete(null);
+        setShowDeleteDialog(false);
+      } catch (err: any) {
+        console.error('Erro ao deletar medicação:', err);
+        alert('Erro ao deletar medicação');
+      }
     }
   };
 
-  const handleSave = () => {
-    if (medicationName.trim()) {
-      // BR-021: Verificar se o nome já existe (único por usuário)
-      const duplicateMedication = medications.find(
-        (m) => 
-          m.name.toLowerCase() === medicationName.trim().toLowerCase() &&
-          m.id !== editingMedication?.id
-      );
-      
-      if (duplicateMedication) {
-        console.error('Medicação já cadastrada');
-        return;
-      }
+  const handleSave = async () => {
+    if (!medicationName.trim()) return;
 
-      // BR-022: Dosagem é opcional, máximo 100 caracteres
-      if (medicationDosage.length > 100) {
-        console.error('Dosagem excede 100 caracteres');
-        return;
-      }
+    // Verificar duplicata
+    const duplicateMedication = medications.find(
+      (m) => 
+        m.nome.toLowerCase() === medicationName.trim().toLowerCase() &&
+        m.id !== editingMedication?.id
+    );
 
+    if (duplicateMedication) {
+      alert('Já existe uma medicação com este nome');
+      return;
+    }
+
+    // Validar dosagem
+    if (medicationDosage.length > 100) {
+      alert('Dosagem excede 100 caracteres');
+      return;
+    }
+
+    try {
+      setSaving(true);
       if (editingMedication) {
-        // Editar medicação existente
-        setMedications(
-          medications.map((m) =>
-            m.id === editingMedication.id 
-              ? { ...m, name: medicationName.trim(), dosage: medicationDosage.trim() || undefined } 
-              : m
-          )
-        );
+        // Atualizar
+        await updateMedicacao(editingMedication.id, { 
+          nome: medicationName.trim(), 
+          dosagem: medicationDosage.trim() || "" 
+        });
+        setMedications(medications.map(m => 
+          m.id === editingMedication.id ? { ...m, nome: medicationName.trim(), dosagem: medicationDosage.trim() || "" } : m
+        ));
       } else {
-        // Adicionar nova medicação
-        const newMedication: Medication = {
-          id: Date.now().toString(),
-          name: medicationName.trim(),
-          dosage: medicationDosage.trim() || undefined,
-          usageCount: 0,
-        };
+        // Criar novo
+        const newMedication = await createMedicacao({ 
+          nome: medicationName.trim(), 
+          dosagem: medicationDosage.trim() || "" 
+        });
         setMedications([...medications, newMedication]);
       }
       setShowDialog(false);
       setMedicationName('');
       setMedicationDosage('');
       setEditingMedication(null);
+    } catch (err: any) {
+      console.error('Erro ao salvar medicação:', err);
+      alert('Erro ao salvar medicação');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -163,66 +190,69 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
 
       {/* Content */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-        <div className="space-y-4">
-          {medications.map((medication) => (
-            <Card
-              key={medication.id}
-              className="shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
-            >
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <p className="text-[#333333]">{medication.name}</p>
-                      {medication.dosage && (
-                        <span className="text-[#7F8C8D]">({medication.dosage})</span>
-                      )}
-                    </div>
-                    <p className="text-[#7F8C8D]">
-                      Usada em {medication.usageCount}{' '}
-                      {medication.usageCount === 1 ? 'episódio' : 'episódios'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(medication)}
-                      className="text-[#7F8C8D] hover:text-[#6C63FF] hover:bg-[#F5F5F5]"
-                      aria-label={`Editar ${medication.name}`}
-                    >
-                      <Edit className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(medication)}
-                      className="text-[#7F8C8D] hover:text-[#E74C3C] hover:bg-[#FEE]"
-                      aria-label={`Deletar ${medication.name}`}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {medications.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-[#717182] mb-4">
-                Nenhuma medicação cadastrada
-              </p>
-              <Button
-                onClick={handleAddNew}
-                className="bg-[#6C63FF] hover:bg-[#5850E6] text-white"
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6C63FF]"></div>
+            <span className="ml-3 text-[#717182]">Carregando medicações...</span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {medications.map((medication) => (
+              <Card
+                key={medication.id}
+                className="shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Primeira Medicação
-              </Button>
-            </div>
-          )}
-        </div>
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <p className="text-[#333333]">{medication.nome}</p>
+                        {medication.dosagem && (
+                          <span className="text-[#7F8C8D]">({medication.dosagem})</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(medication)}
+                        className="text-[#7F8C8D] hover:text-[#6C63FF] hover:bg-[#F5F5F5]"
+                        aria-label={`Editar ${medication.nome}`}
+                      >
+                        <Edit className="w-5 h-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(medication)}
+                        className="text-[#7F8C8D] hover:text-[#E74C3C] hover:bg-[#FEE]"
+                        aria-label={`Deletar ${medication.nome}`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {medications.length === 0 && (
+              <div className="text-center py-16">
+                <p className="text-[#717182] mb-4">
+                  Nenhuma medicação cadastrada
+                </p>
+                <Button
+                  onClick={handleAddNew}
+                  className="bg-[#6C63FF] hover:bg-[#5850E6] text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Primeira Medicação
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Add/Edit Dialog */}
@@ -271,15 +301,15 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
+            <Button onClick={handleCloseDialog} className="border border-gray-300">
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!medicationName.trim()}
+              disabled={!medicationName.trim() || saving}
               className="bg-[#6C63FF] hover:bg-[#5850E6]"
             >
-              {editingMedication ? 'Salvar' : 'Adicionar'}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingMedication ? 'Salvar' : 'Adicionar')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -291,13 +321,7 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a medicação "{medicationToDelete?.name}"?
-              {medicationToDelete && medicationToDelete.usageCount > 0 && (
-                <span className="block mt-2 text-[#E67E22]">
-                  Esta medicação está sendo usada em {medicationToDelete.usageCount}{' '}
-                  {medicationToDelete.usageCount === 1 ? 'episódio' : 'episódios'}.
-                </span>
-              )}
+              Tem certeza que deseja excluir a medicação "{medicationToDelete?.nome}"?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

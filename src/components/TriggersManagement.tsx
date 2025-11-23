@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Edit, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
@@ -22,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
+import { getGatilhos, createGatilho, updateGatilho, deleteGatilho } from '../services/apiClient';
+import type { GatilhoOut } from '../lib/types';
 
 interface Trigger {
   id: string;
@@ -34,19 +36,32 @@ interface TriggersManagementProps {
 }
 
 export function TriggersManagement({ onBack }: TriggersManagementProps) {
-  const [triggers, setTriggers] = useState<Trigger[]>([
-    { id: '1', name: 'Estresse', usageCount: 12 },
-    { id: '2', name: 'Falta de sono', usageCount: 8 },
-    { id: '3', name: 'Chocolate', usageCount: 5 },
-    { id: '4', name: 'Café', usageCount: 4 },
-    { id: '5', name: 'Luz forte', usageCount: 3 },
-  ]);
-
+  const [triggers, setTriggers] = useState<GatilhoOut[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editingTrigger, setEditingTrigger] = useState<Trigger | null>(null);
-  const [triggerToDelete, setTriggerToDelete] = useState<Trigger | null>(null);
+  const [editingTrigger, setEditingTrigger] = useState<GatilhoOut | null>(null);
+  const [triggerToDelete, setTriggerToDelete] = useState<GatilhoOut | null>(null);
   const [triggerName, setTriggerName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchTriggers();
+  }, []);
+
+  const fetchTriggers = async () => {
+    try {
+      setLoading(true);
+      const data = await getGatilhos();
+      setTriggers(data);
+    } catch (err: any) {
+      console.error('Erro ao buscar gatilhos:', err);
+      setError('Erro ao carregar gatilhos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBack = () => {
     if (onBack) {
@@ -60,59 +75,65 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
     setShowDialog(true);
   };
 
-  const handleEdit = (trigger: Trigger) => {
+  const handleEdit = (trigger: GatilhoOut) => {
     setEditingTrigger(trigger);
-    setTriggerName(trigger.name);
+    setTriggerName(trigger.nome);
     setShowDialog(true);
   };
 
-  const handleDelete = (trigger: Trigger) => {
+  const handleDelete = (trigger: GatilhoOut) => {
     setTriggerToDelete(trigger);
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (triggerToDelete) {
-      setTriggers(triggers.filter((t) => t.id !== triggerToDelete.id));
-      setTriggerToDelete(null);
-      setShowDeleteDialog(false);
+      try {
+        await deleteGatilho(triggerToDelete.id);
+        setTriggers(triggers.filter((t) => t.id !== triggerToDelete.id));
+        setTriggerToDelete(null);
+        setShowDeleteDialog(false);
+      } catch (err: any) {
+        console.error('Erro ao deletar gatilho:', err);
+        alert('Erro ao deletar gatilho');
+      }
     }
   };
 
-  const handleSave = () => {
-    if (triggerName.trim()) {
-      // BR-018: Verificar se o nome já existe (único por usuário)
-      const duplicateTrigger = triggers.find(
-        (t) =>
-          t.name.toLowerCase() === triggerName.trim().toLowerCase() &&
-          t.id !== editingTrigger?.id
-      );
+  const handleSave = async () => {
+    if (!triggerName.trim()) return;
 
-      if (duplicateTrigger) {
-        // Aqui você pode adicionar um toast de erro
-        console.error('Gatilho já cadastrado');
-        return;
-      }
+    // Verificar duplicata
+    const duplicateTrigger = triggers.find(
+      (t) => t.nome.toLowerCase() === triggerName.trim().toLowerCase() && t.id !== editingTrigger?.id
+    );
 
+    if (duplicateTrigger) {
+      alert('Já existe um gatilho com este nome');
+      return;
+    }
+
+    try {
+      setSaving(true);
       if (editingTrigger) {
-        // Editar gatilho existente
-        setTriggers(
-          triggers.map((t) =>
-            t.id === editingTrigger.id ? { ...t, name: triggerName.trim() } : t
-          )
-        );
+        // Atualizar
+        await updateGatilho(editingTrigger.id, { nome: triggerName.trim() });
+        setTriggers(triggers.map(t => 
+          t.id === editingTrigger.id ? { ...t, nome: triggerName.trim() } : t
+        ));
       } else {
-        // Adicionar novo gatilho
-        const newTrigger: Trigger = {
-          id: Date.now().toString(),
-          name: triggerName.trim(),
-          usageCount: 0,
-        };
+        // Criar novo
+        const newTrigger = await createGatilho({ nome: triggerName.trim() });
         setTriggers([...triggers, newTrigger]);
       }
       setShowDialog(false);
       setTriggerName('');
       setEditingTrigger(null);
+    } catch (err: any) {
+      console.error('Erro ao salvar gatilho:', err);
+      alert('Erro ao salvar gatilho');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -121,6 +142,30 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
     setTriggerName('');
     setEditingTrigger(null);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#6C63FF]" />
+          <p className="text-[#666666]">Carregando gatilhos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={fetchTriggers} className="bg-[#6C63FF] hover:bg-[#5850E6]">
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
@@ -159,11 +204,7 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-[#333333] mb-1">{trigger.name}</p>
-                    <p className="text-[#7F8C8D]">
-                      Usado em {trigger.usageCount}{' '}
-                      {trigger.usageCount === 1 ? 'episódio' : 'episódios'}
-                    </p>
+                    <p className="text-[#333333] mb-1">{trigger.nome}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -171,7 +212,7 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
                       size="icon"
                       onClick={() => handleEdit(trigger)}
                       className="text-[#7F8C8D] hover:text-[#6C63FF] hover:bg-[#F5F5F5]"
-                      aria-label={`Editar ${trigger.name}`}
+                      aria-label={`Editar ${trigger.nome}`}
                     >
                       <Edit className="w-5 h-5" />
                     </Button>
@@ -180,7 +221,7 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
                       size="icon"
                       onClick={() => handleDelete(trigger)}
                       className="text-[#7F8C8D] hover:text-[#E74C3C] hover:bg-[#FEE]"
-                      aria-label={`Deletar ${trigger.name}`}
+                      aria-label={`Deletar ${trigger.nome}`}
                     >
                       <Trash2 className="w-5 h-5" />
                     </Button>
@@ -255,7 +296,7 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o gatilho "{triggerToDelete?.name}"?
+              Tem certeza que deseja excluir o gatilho "{triggerToDelete?.nome}"?
               {triggerToDelete && triggerToDelete.usageCount > 0 && (
                 <span className="block mt-2 text-[#E67E22]">
                   Este gatilho está sendo usado em {triggerToDelete.usageCount}{' '}

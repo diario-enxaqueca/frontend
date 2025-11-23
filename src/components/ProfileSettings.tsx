@@ -24,6 +24,8 @@ import {
   DialogFooter,
 } from './ui/dialog';
 import { useAuth } from '../contexts/AuthContext';
+import { deleteCurrentUser } from '../services/apiClient';
+import { toast } from 'sonner@2.0.3';
 import { UserUpdate } from '../lib/types';
 
 interface ProfileSettingsProps {
@@ -40,6 +42,7 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
 
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -104,8 +107,28 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
   };
 
   const handleDeleteAccount = () => {
-    console.log('Excluir conta');
-    // Lógica para excluir conta aqui
+    // Confirmação já exibida pelo AlertDialog; executa exclusão
+    (async () => {
+      try {
+        setDeletingAccount(true);
+        await deleteCurrentUser();
+        toast.success('Conta excluída com sucesso.');
+        // Limpa estado local e realiza logout/redirect
+        if (onLogout) {
+          onLogout();
+        } else {
+          logout();
+        }
+        // Redireciona para a página de login
+        window.location.href = '/';
+      } catch (error: any) {
+        const message = error?.response?.data?.detail || 'Erro ao excluir conta';
+        toast.error(message);
+        console.error('Erro ao excluir conta:', error);
+      } finally {
+        setDeletingAccount(false);
+      }
+    })();
   };
 
   const handleLogout = (e?: React.MouseEvent) => {
@@ -284,9 +307,10 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
                     className="bg-[#E74C3C] hover:bg-[#C0392B]"
                   >
-                    Excluir Conta
+                    {deletingAccount ? 'Excluindo...' : 'Excluir Conta'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
