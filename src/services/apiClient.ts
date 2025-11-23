@@ -24,28 +24,40 @@ import {
   EpisodioQueryParams
 } from '../lib/types';
 
-// Configura o axios com a base URL da API backend
+// Configura o axios com a base URL da API backend.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL,  // essa variável deve estar configurada no arquivo .env
-  timeout: 5000,  // tempo limite para requisição (ms)
+  baseURL: '/api/',
+  timeout: 5000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Cliente separado para o serviço de autenticação
+const authApi = axios.create({
+  baseURL: '/api/auth/',
+  timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 // Interceptador adiciona token no header Authorization para requisições protegidas
-api.interceptors.request.use(config => {
+const addAuthToken = (config: any) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+};
+
+api.interceptors.request.use(addAuthToken);
+authApi.interceptors.request.use(addAuthToken);
 
 // Interceptor para tratamento de erros
 api.interceptors.response.use(
-  (response) => response,
+  (response: any) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       // Token expirado ou inválido
@@ -77,13 +89,13 @@ export function isAuthenticated(): boolean {
 // ==================== AUTH ====================
 
 export async function register(data: UserCreate): Promise<UserOut> {
-  // Ajuste de rota: serviço de autenticação expõe prefixo /api/auth
-  const response = await api.post<UserOut>('/api/auth/register', data);
+  // Serviço de autenticação direto
+  const response = await authApi.post<UserOut>('/register', data);
   return response.data;
 }
 
 export async function login(data: UserLogin): Promise<Token> {
-  const response = await api.post<Token>('/api/auth/login', data);
+  const response = await authApi.post<Token>('/login', data);
   if (response.data.access_token) {
     setAuthToken(response.data.access_token);
   }
@@ -91,7 +103,7 @@ export async function login(data: UserLogin): Promise<Token> {
 }
 
 export async function resetPassword(data: ResetPasswordRequest): Promise<Message> {
-  const response = await api.post<Message>('/api/auth/forgot-password', data);
+  const response = await authApi.post<Message>('/forgot-password', data);
   return response.data;
 }
 
@@ -101,7 +113,7 @@ export interface ChangePasswordRequest {
 }
 
 export async function changePassword(data: ChangePasswordRequest): Promise<Message> {
-  const response = await api.post<Message>('/api/auth/change-password', data);
+  const response = await authApi.post<Message>('/change-password', data);
   return response.data;
 }
 

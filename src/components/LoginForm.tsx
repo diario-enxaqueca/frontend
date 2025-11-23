@@ -71,7 +71,7 @@ export function LoginForm({ onNavigateToRegister, onLoginSuccess }: LoginFormPro
     // }
 
     try {
-        await login({ nome: email, email, senha: password });
+        await login({ email, senha: password });
         if (onLoginSuccess) {
           onLoginSuccess();
         }
