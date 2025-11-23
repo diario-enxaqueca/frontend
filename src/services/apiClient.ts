@@ -77,12 +77,13 @@ export function isAuthenticated(): boolean {
 // ==================== AUTH ====================
 
 export async function register(data: UserCreate): Promise<UserOut> {
-  const response = await api.post<UserOut>('/auth/register', data);
+  // Ajuste de rota: serviço de autenticação expõe prefixo /api/auth
+  const response = await api.post<UserOut>('/api/auth/register', data);
   return response.data;
 }
 
 export async function login(data: UserLogin): Promise<Token> {
-  const response = await api.post<Token>('/auth/login', data);
+  const response = await api.post<Token>('/api/auth/login', data);
   if (response.data.access_token) {
     setAuthToken(response.data.access_token);
   }
@@ -90,7 +91,7 @@ export async function login(data: UserLogin): Promise<Token> {
 }
 
 export async function resetPassword(data: ResetPasswordRequest): Promise<Message> {
-  const response = await api.post<Message>('/auth/forgot-password', data);
+  const response = await api.post<Message>('/api/auth/forgot-password', data);
   return response.data;
 }
 
@@ -100,7 +101,7 @@ export interface ChangePasswordRequest {
 }
 
 export async function changePassword(data: ChangePasswordRequest): Promise<Message> {
-  const response = await api.post<Message>('/auth/change-password', data);
+  const response = await api.post<Message>('/api/auth/change-password', data);
   return response.data;
 }
 
