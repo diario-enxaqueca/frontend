@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search, Filter, X, Calendar as CalendarIcon, SlidersHorizontal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, X, Calendar as CalendarIcon, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -13,6 +13,8 @@ import { Separator } from './ui/separator';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EpisodeCard } from './EpisodeCard';
+import { getEpisodios, getGatilhos, getMedicacoes } from '../services/apiClient';
+import type { EpisodioOut, PaginatedEpisodios, GatilhoOut, MedicacaoOut } from '../lib/types';
 
 interface Episode {
   id: string;
@@ -39,61 +41,80 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
   const [selectedMedications, setSelectedMedications] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(true);
 
-  // Dados de exemplo
-  const allTriggers = ['Estresse', 'Falta de sono', 'Chocolate', 'Café', 'Luz forte', 'Alimentos específicos', 'Telas prolongadas'];
-  const allMedications = ['Paracetamol', 'Ibuprofeno', 'Dipirona', 'Sumatriptano', 'Naproxeno'];
+  // Estados de dados
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [allTriggers, setAllTriggers] = useState<string[]>([]);
+  const [allMedications, setAllMedications] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const episodes: Episode[] = [
-    {
-      id: '1',
-      date: '2025-10-23',
-      intensity: 9,
-      duration: '4h',
-      triggers: ['Estresse', 'Falta de sono'],
-      medications: ['Paracetamol', 'Ibuprofeno'],
-      notes: 'Episódio muito intenso após dia de trabalho',
-    },
-    {
-      id: '2',
-      date: '2025-10-20',
-      intensity: 6,
-      duration: '2h',
-      triggers: ['Alimentos específicos'],
-      medications: ['Paracetamol'],
-      notes: 'Melhorou após medicação',
-    },
-    {
-      id: '3',
-      date: '2025-10-15',
-      intensity: 8,
-      duration: '3h 30min',
-      triggers: ['Estresse', 'Telas prolongadas'],
-      medications: ['Dipirona'],
-    },
-    {
-      id: '4',
-      date: '2025-10-10',
-      intensity: 5,
-      duration: '1h 30min',
-      triggers: ['Café', 'Luz forte'],
-      medications: ['Ibuprofeno'],
-      notes: 'Episódio leve, resolveu rápido',
-    },
-    {
-      id: '5',
-      date: '2025-10-05',
-      intensity: 7,
-      duration: '3h',
-      triggers: ['Falta de sono'],
-      medications: ['Sumatriptano'],
-    },
-  ];
+  // Carregar dados do backend
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      setError(null);
+      try {
+        // Carregar episódios
+        const episodesData: PaginatedEpisodios = await getEpisodios({ per_page: 1000 });
+        const mappedEpisodes = episodesData.items?.map(mapEpisodioToEpisode) || [];
+        setEpisodes(mappedEpisodes);
 
-  // Aplicar filtros
+        // Carregar gatilhos
+        const triggersData = await getGatilhos();
+        setAllTriggers(triggersData.map((t: GatilhoOut) => t.nome));
+
+        // Carregar medicações
+        const medicationsData = await getMedicacoes();
+        setAllMedications(medicationsData.map((m: MedicacaoOut) => m.nome));
+      } catch (err: any) {
+        console.error('Erro ao carregar dados para busca avançada:', err);
+        setError('Erro ao carregar dados');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Função para mapear EpisodioOut para Episode
+  const mapEpisodioToEpisode = (e: EpisodioOut): Episode => {
+    let duration = '-';
+    try {
+      if (e.data_fim) {
+        const start = new Date(e.data_inicio);
+        const end = new Date(e.data_fim);
+        const diffMs = Math.max(0, end.getTime() - start.getTime());
+        const minutes = Math.round(diffMs / 60000);
+        if (minutes >= 60) {
+          const h = Math.floor(minutes / 60);
+          const m = minutes % 60;
+          duration = m === 0 ? `${h}h` : `${h}h ${m}m`;
+        } else {
+          duration = `${minutes}m`;
+        }
+      }
+    } catch (err) {
+      duration = '-';
+    }
+
+    return {
+      id: String(e.id),
+      date: e.data_inicio,
+      intensity: e.intensidade ?? 0,
+      duration,
+      triggers: (e.gatilhos || []).map(g => g.nome),
+      medications: (e.medicacoes || []).map(m => m.nome),
+      notes: e.observacoes ?? undefined,
+    };
+  };
   const filteredEpisodes = episodes.filter((episode) => {
-    // Filtro de texto (busca em notes)
-    if (searchText && episode.notes) {
-      if (!episode.notes.toLowerCase().includes(searchText.toLowerCase())) {
+    // Filtro de texto (busca em notes, triggers, medications)
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      const inNotes = episode.notes?.toLowerCase().includes(searchLower);
+      const inTriggers = episode.triggers.some(t => t.toLowerCase().includes(searchLower));
+      const inMedications = episode.medications.some(m => m.toLowerCase().includes(searchLower));
+      if (!inNotes && !inTriggers && !inMedications) {
         return false;
       }
     }
@@ -189,7 +210,21 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-[#6C63FF]" />
+            <span className="ml-2 text-[#717182]">Carregando dados...</span>
+          </div>
+        ) : error ? (
+          <Card className="shadow-md">
+            <CardContent className="py-16 text-center">
+              <p className="text-red-600">{error}</p>
+              <Button onClick={() => window.location.reload()} className="mt-4">
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
           {/* Painel de Filtros */}
           <div className={`lg:col-span-1 space-y-4 ${!showFilters ? 'hidden lg:block' : ''}`}>
             <Card className="shadow-md sticky top-6">
@@ -446,6 +481,7 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

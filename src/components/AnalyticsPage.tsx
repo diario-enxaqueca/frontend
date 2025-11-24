@@ -69,9 +69,6 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
         const monthly = months.map((m) => ({ month: format(m, 'MMM'), episodes: 0, avgIntensity: 0, totalDuration: 0 }));
         items.forEach(ep => {
           const dt = parseISO(ep.data_inicio);
-          const mIndex = monthly.findIndex(m => isSameMonth(dt, parseISO(format(dateFrom, 'yyyy-MM-dd')))
-            ? monthly.findIndex(x => x.month === format(dt, 'MMM'))
-            : monthly.findIndex(x => x.month === format(dt, 'MMM')));
           const idx = monthly.findIndex(x => x.month === format(dt, 'MMM'));
           if (idx >= 0) {
             monthly[idx].episodes += 1;

@@ -282,6 +282,51 @@ export function Dashboard({ onNavigate, userName }: DashboardProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Recent Episodes Section */}
+        <Card className="mb-6 shadow-md">
+          <CardHeader>
+            <CardTitle className="text-[#333333] flex items-center gap-2">
+              <span>📅</span> Episódios Recentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {episodes.slice(0, 5).map((episode) => (
+                <div
+                  key={episode.id}
+                  className="bg-[#F5F5F5] p-4 rounded-lg hover:bg-[#ECECEC] transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[#333333] font-medium">
+                        {format(parseISO(episode.data_inicio), 'dd/MM/yyyy')}
+                      </span>
+                      <span className="text-[#717182] ml-2">
+                        Intensidade: {episode.intensidade}/10
+                      </span>
+                      {episode.gatilhos.length > 0 && (
+                        <div className="text-[#717182] text-sm mt-1">
+                          Gatilhos: {episode.gatilhos.map(g => g.nome).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onNavigate?.('episodes')}
+                    >
+                      Ver Lista
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {episodes.length === 0 && !loadingEpisodes && (
+                <p className="text-[#717182]">Nenhum episódio registrado ainda.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
