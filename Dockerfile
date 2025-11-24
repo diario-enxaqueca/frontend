@@ -12,13 +12,6 @@ RUN apt-get update \
 		curl \
 	&& rm -rf /var/lib/apt/lists/*
 
-ARG VITE_BACKEND_URL
-ARG VITE_AUTH_URL
-ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
-ENV VITE_AUTH_URL=${VITE_AUTH_URL}
-
-
-
 COPY package*.json ./
 ENV CI=true
 # Use `npm install` here because `npm ci` requires package.json and package-lock.json
@@ -26,7 +19,7 @@ ENV CI=true
 # so `npm install` will resolve/install dependencies and continue the build.
 RUN npm install --legacy-peer-deps --no-audit --progress=false
 COPY . .
-COPY ca.pem /app/ca.pem
+
 # Build and verify output exists. If no /app/dist is produced, fail with a clear message
 RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_URL=$VITE_AUTH_URL" \
     && npm run build \
@@ -45,25 +38,9 @@ RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_UR
 FROM nginx:alpine
 RUN apk add --no-cache gettext ca-certificates
 
-ARG BACKEND_HOST
-ARG AUTH_HOST
-ENV BACKEND_HOST=${BACKEND_HOST}
-ENV AUTH_HOST=${AUTH_HOST}
-
-ARG VITE_BACKEND_URL
-ARG VITE_AUTH_URL
-ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
-ENV VITE_AUTH_URL=${VITE_AUTH_URL}
-
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY ca.pem /app/ca.pem
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf.template
-RUN BACKEND_URL=${BACKEND_URL:-http://backend:8000} \
-    AUTH_URL=${AUTH_URL:-http://auth:8001} \
-    BACKEND_SSL_VERIFY=${BACKEND_SSL_VERIFY:-off} \
-    AUTH_SSL_VERIFY=${AUTH_SSL_VERIFY:-off} \
-    envsubst '${BACKEND_URL} ${AUTH_URL} ${BACKEND_SSL_VERIFY} ${AUTH_SSL_VERIFY}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
