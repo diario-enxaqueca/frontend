@@ -26,6 +26,7 @@ ENV CI=true
 # so `npm install` will resolve/install dependencies and continue the build.
 RUN npm install --legacy-peer-deps --no-audit --progress=false
 COPY . .
+COPY ca.pem /app/ca.pem
 # Build and verify output exists. If no /app/dist is produced, fail with a clear message
 RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_URL=$VITE_AUTH_URL" \
     && npm run build \
@@ -55,6 +56,7 @@ ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 ENV VITE_AUTH_URL=${VITE_AUTH_URL}
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY ca.pem /app/ca.pem
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 RUN envsubst '${BACKEND_HOST} ${AUTH_HOST} ${VITE_BACKEND_URL} ${VITE_AUTH_URL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
