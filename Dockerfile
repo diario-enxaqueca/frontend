@@ -11,10 +11,12 @@ RUN apt-get update \
 		ca-certificates \
 		curl \
 	&& rm -rf /var/lib/apt/lists/*
+    
 ARG VITE_BACKEND_URL
 ARG VITE_AUTH_URL
 ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 ENV VITE_AUTH_URL=${VITE_AUTH_URL}
+
 COPY package*.json ./
 ENV CI=true
 # Use `npm install` here because `npm ci` requires package.json and package-lock.json
@@ -40,19 +42,15 @@ RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_UR
 FROM nginx:alpine
 RUN apk add --no-cache gettext
 
-ARG BACKEND_HOST
-ARG BACKEND_PORT
-ARG AUTH_HOST
-ARG AUTH_PORT
-ENV BACKEND_HOST=${BACKEND_HOST}
-ENV BACKEND_PORT=${BACKEND_PORT}
-ENV AUTH_HOST=${AUTH_HOST}
-ENV AUTH_PORT=${AUTH_PORT}
+ARG VITE_BACKEND_URL
+ARG VITE_AUTH_URL
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_AUTH_URL=${VITE_AUTH_URL}
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 
-RUN envsubst '$BACKEND_HOST $BACKEND_PORT $AUTH_HOST $AUTH_PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+RUN envsubst '${VITE_BACKEND_URL} ${VITE_AUTH_URL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
