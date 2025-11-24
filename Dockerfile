@@ -43,7 +43,7 @@ RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_UR
 	fi
 
 FROM nginx:alpine
-RUN apk add --no-cache gettext
+RUN apk add --no-cache gettext ca-certificates
 
 ARG BACKEND_HOST
 ARG AUTH_HOST
