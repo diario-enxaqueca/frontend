@@ -107,6 +107,7 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
       notes: e.observacoes ?? undefined,
     };
   };
+
   const filteredEpisodes = episodes.filter((episode) => {
     // Filtro de texto (busca em notes, triggers, medications)
     if (searchText) {
@@ -189,6 +190,170 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
     return '#E74C3C';
   };
 
+  const content = loading ? (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="w-8 h-8 animate-spin text-[#6C63FF]" />
+      <span className="ml-2 text-[#717182]">Carregando dados...</span>
+    </div>
+  ) : error ? (
+    <Card className="shadow-md">
+      <CardContent className="py-16 text-center">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Tentar novamente
+        </Button>
+      </CardContent>
+    </Card>
+  ) : (
+    <div className={`lg:col-span-1 space-y-4 ${!showFilters ? 'hidden lg:block' : ''}`}>
+      <Card className="shadow-md sticky top-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-[#333333]">
+              <Filter className="w-5 h-5" />
+              Filtros
+            </CardTitle>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="text-[#E74C3C] hover:text-[#C0392B]"
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Busca por Texto */}
+          <div className="space-y-2">
+            <Label htmlFor="search-text">Buscar em observações</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#717182]" />
+              <Input
+                id="search-text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Digite para buscar..."
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Período */}
+          <div className="space-y-3">
+            <Label>Período</Label>
+            <div className="space-y-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data inicial'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={dateFrom}
+                    onSelect={setDateFrom}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data final'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={dateTo}
+                    onSelect={setDateTo}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Intensidade */}
+          <div className="space-y-3">
+            <Label>Intensidade</Label>
+            <Slider
+              value={intensityRange}
+              onValueChange={setIntensityRange}
+              max={10}
+              min={0}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-sm text-[#717182]">
+              <span>0</span>
+              <span>{intensityRange[0]} - {intensityRange[1]}</span>
+              <span>10</span>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Gatilhos */}
+          <div className="space-y-3">
+            <Label>Gatilhos</Label>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {allTriggers.map((trigger) => (
+                <div key={trigger} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`trigger-${trigger}`}
+                    checked={selectedTriggers.includes(trigger)}
+                    onCheckedChange={() => toggleTrigger(trigger)}
+                  />
+                  <Label htmlFor={`trigger-${trigger}`} className="text-sm">
+                    {trigger}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Medicações */}
+          <div className="space-y-3">
+            <Label>Medicações</Label>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {allMedications.map((med) => (
+                <div key={med} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`med-${med}`}
+                    checked={selectedMedications.includes(med)}
+                    onCheckedChange={() => toggleMedication(med)}
+                  />
+                  <Label htmlFor={`med-${med}`} className="text-sm">
+                    {med}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -210,278 +375,44 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
           </Button>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-[#6C63FF]" />
-            <span className="ml-2 text-[#717182]">Carregando dados...</span>
-          </div>
-        ) : error ? (
-          <Card className="shadow-md">
-            <CardContent className="py-16 text-center">
-              <p className="text-red-600">{error}</p>
-              <Button onClick={() => window.location.reload()} className="mt-4">
-                Tentar novamente
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          {/* Painel de Filtros */}
-          <div className={`lg:col-span-1 space-y-4 ${!showFilters ? 'hidden lg:block' : ''}`}>
-            <Card className="shadow-md sticky top-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-[#333333]">
-                    <Filter className="w-5 h-5" />
-                    Filtros
-                  </CardTitle>
-                  {hasActiveFilters && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearAllFilters}
-                      className="text-[#E74C3C] hover:text-[#C0392B]"
-                    >
-                      Limpar
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Busca por Texto */}
-                <div className="space-y-2">
-                  <Label htmlFor="search-text">Buscar em observações</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#717182]" />
-                    <Input
-                      id="search-text"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      placeholder="Digite para buscar..."
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
+        {/* Conteúdo principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {content}
 
-                <Separator />
-
-                {/* Período */}
-                <div className="space-y-3">
-                  <Label>Período</Label>
-                  <div className="space-y-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data inicial'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateFrom}
-                          onSelect={setDateFrom}
-                          locale={ptBR}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data final'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateTo}
-                          onSelect={setDateTo}
-                          locale={ptBR}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Intensidade */}
-                <div className="space-y-3">
-                  <Label>Intensidade: {intensityRange[0]} - {intensityRange[1]}</Label>
-                  <Slider
-                    value={intensityRange}
-                    onValueChange={(value) => setIntensityRange(value as [number, number])}
-                    min={0}
-                    max={10}
-                    step={1}
-                    className="mt-2"
-                  />
-                  <div className="flex justify-between text-xs text-[#717182]">
-                    <span>Leve</span>
-                    <span>Moderada</span>
-                    <span>Forte</span>
-                    <span>Muito forte</span>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Gatilhos */}
-                <div className="space-y-3">
-                  <Label>Gatilhos</Label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {allTriggers.map((trigger) => (
-                      <div key={trigger} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`trigger-${trigger}`}
-                          checked={selectedTriggers.includes(trigger)}
-                          onCheckedChange={() => toggleTrigger(trigger)}
-                        />
-                        <Label
-                          htmlFor={`trigger-${trigger}`}
-                          className="cursor-pointer text-sm"
-                        >
-                          {trigger}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Medicações */}
-                <div className="space-y-3">
-                  <Label>Medicações</Label>
-                  <div className="space-y-2">
-                    {allMedications.map((med) => (
-                      <div key={med} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`med-${med}`}
-                          checked={selectedMedications.includes(med)}
-                          onCheckedChange={() => toggleMedication(med)}
-                        />
-                        <Label
-                          htmlFor={`med-${med}`}
-                          className="cursor-pointer text-sm"
-                        >
-                          {med}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Resultados */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Filtros Ativos */}
-            {hasActiveFilters && (
-              <Card className="shadow-md bg-blue-50 border-blue-200">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-blue-900">
-                      <strong>Filtros ativos:</strong>
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearAllFilters}
-                      className="text-blue-700 hover:text-blue-900"
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Limpar todos
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {searchText && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-900">
-                        Texto: "{searchText}"
-                      </Badge>
-                    )}
-                    {dateFrom && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-900">
-                        De: {format(dateFrom, 'dd/MM/yyyy')}
-                      </Badge>
-                    )}
-                    {dateTo && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-900">
-                        Até: {format(dateTo, 'dd/MM/yyyy')}
-                      </Badge>
-                    )}
-                    {(intensityRange[0] > 0 || intensityRange[1] < 10) && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-900">
-                        Intensidade: {intensityRange[0]}-{intensityRange[1]}
-                      </Badge>
-                    )}
-                    {selectedTriggers.map((trigger) => (
-                      <Badge key={trigger} variant="secondary" className="bg-blue-100 text-blue-900">
-                        Gatilho: {trigger}
-                      </Badge>
-                    ))}
-                    {selectedMedications.map((med) => (
-                      <Badge key={med} variant="secondary" className="bg-blue-100 text-blue-900">
-                        Medicação: {med}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Contador de Resultados */}
+          {/* Lista de episódios */}
+          <div className={`lg:col-span-3 space-y-4 ${showFilters ? 'hidden lg:block' : ''}`}>
             <div className="flex items-center justify-between">
-              <p className="text-[#717182]">
-                <strong className="text-[#333333]">{filteredEpisodes.length}</strong>{' '}
-                {filteredEpisodes.length === 1 ? 'episódio encontrado' : 'episódios encontrados'}
-              </p>
+              <h2 className="text-lg font-semibold text-[#333333]">
+                Episódios encontrados ({filteredEpisodes.length})
+              </h2>
+              {onBack && (
+                <Button variant="outline" onClick={onBack}>
+                  <X className="w-4 h-4 mr-2" />
+                  Voltar
+                </Button>
+              )}
             </div>
 
-            {/* Lista de Episódios */}
-            {filteredEpisodes.length > 0 ? (
+            {filteredEpisodes.length === 0 ? (
+              <Card className="shadow-md">
+                <CardContent className="py-16 text-center">
+                  <p className="text-[#717182]">Nenhum episódio encontrado com os filtros aplicados.</p>
+                </CardContent>
+              </Card>
+            ) : (
               <div className="space-y-4">
                 {filteredEpisodes.map((episode) => (
                   <EpisodeCard
                     key={episode.id}
                     episode={episode}
-                    onClick={() => onViewEpisode?.(episode.id)}
+                    onView={onViewEpisode}
+                    intensityColor={getIntensityColor(episode.intensity)}
                   />
                 ))}
               </div>
-            ) : (
-              <Card className="shadow-md">
-                <CardContent className="py-16 text-center">
-                  <Search className="w-16 h-16 mx-auto mb-4 text-[#717182]" />
-                  <h3 className="text-[#333333] mb-2">Nenhum episódio encontrado</h3>
-                  <p className="text-[#717182] mb-4">
-                    Tente ajustar os filtros para encontrar mais resultados
-                  </p>
-                  {hasActiveFilters && (
-                    <Button
-                      onClick={clearAllFilters}
-                      variant="outline"
-                      className="border-[#6C63FF] text-[#6C63FF]"
-                    >
-                      Limpar filtros
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
             )}
           </div>
         </div>
-        )}
       </div>
     </div>
   );
