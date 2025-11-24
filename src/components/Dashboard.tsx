@@ -7,6 +7,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FileText } from 'lucide-react';
 import { BarChart3, Search } from 'lucide-react';
 import { fetchUserProfile } from "../services/apiClient";
+import { getEpisodios } from '../services/apiClient';
+import type { EpisodioOut, PaginatedEpisodios } from '../lib/types';
+import { parseISO, format, subMonths, isSameMonth } from 'date-fns';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -15,6 +18,9 @@ interface DashboardProps {
 
 export function Dashboard({ onNavigate, userName }: DashboardProps) {
   const [currentUserName, setCurrentUserName] = useState("");
+  const [episodes, setEpisodes] = useState<EpisodioOut[]>([]);
+  const [loadingEpisodes, setLoadingEpisodes] = useState<boolean>(false);
+  const [errorEpisodes, setErrorEpisodes] = useState<string | null>(null);
 
     // Função para obter saudação baseada no horário
   const getGreeting = () => {
@@ -42,24 +48,90 @@ export function Dashboard({ onNavigate, userName }: DashboardProps) {
   // Pega o primeiro nome
   const firstName = currentUserName?.split(' ')[0] || 'Usuário';
 
-  // Dados do gráfico - últimos 6 meses
-  const chartData = [
-    { month: 'Mai', episodios: 12 },
-    { month: 'Jun', episodios: 9 },
-    { month: 'Jul', episodios: 15 },
-    { month: 'Ago', episodios: 8 },
-    { month: 'Set', episodios: 11 },
-    { month: 'Out', episodios: 8 },
-  ];
+  // Dados do gráfico - últimos 6 meses (serão atualizados com dados reais)
+  const [chartData, setChartData] = useState<{ month: string; episodios: number }[]>([]);
 
-  // Dados dos gatilhos
-  const triggers = [
-    { name: 'Estresse', count: 12 },
-    { name: 'Falta de sono', count: 10 },
-    { name: 'Alimentos específicos', count: 8 },
-    { name: 'Mudanças climáticas', count: 7 },
-    { name: 'Telas por tempo prolongado', count: 6 },
-  ];
+  const [triggers, setTriggers] = useState<{ name: string; count: number }[]>([]);
+
+  // Métricas derivadas dos episódios carregados
+  const totalThisMonth = (() => {
+    const now = new Date();
+    return episodes.filter(e => isSameMonth(parseISO(e.data_inicio), now)).length;
+  })();
+
+  const avgIntensity = (() => {
+    if (!episodes.length) return 0;
+    const sum = episodes.reduce((s, e) => s + (e.intensidade ?? 0), 0);
+    return +(sum / episodes.length).toFixed(1);
+  })();
+
+  const avgDurationHours = (() => {
+    const durations: number[] = episodes
+      .map(e => {
+        if (e.data_fim) {
+          const start = parseISO(e.data_inicio);
+          const end = parseISO(e.data_fim);
+          const diffMs = end.getTime() - start.getTime();
+          if (diffMs > 0) return diffMs / (1000 * 60 * 60);
+        }
+        return null;
+      })
+      .filter((v): v is number => v !== null);
+    if (!durations.length) return 0;
+    const avg = durations.reduce((s, v) => s + v, 0) / durations.length;
+    return +avg.toFixed(1);
+  })();
+
+  const mostCommonTrigger = (() => {
+    if (!triggers.length) return { name: '-', count: 0 };
+    return triggers.reduce((prev, cur) => (cur.count > prev.count ? cur : prev), triggers[0]);
+  })();
+
+  // Carrega episódios reais do backend e calcula métricas
+  useEffect(() => {
+    async function loadEpisodes() {
+      setLoadingEpisodes(true);
+      setErrorEpisodes(null);
+      try {
+        const data: PaginatedEpisodios = await getEpisodios({ per_page: 1000 });
+        const items = data.items || [];
+        setEpisodes(items);
+
+        // Agregar gatilhos
+        const map = new Map<string, number>();
+        items.forEach(ep => {
+          (ep.gatilhos || []).forEach(g => {
+            const name = g.nome;
+            map.set(name, (map.get(name) || 0) + 1);
+          });
+        });
+        const triggersArr = Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+        triggersArr.sort((a, b) => b.count - a.count);
+        setTriggers(triggersArr.slice(0, 6));
+
+        // montar dados do gráfico últimos 6 meses
+        const months: { month: string; date: Date; episodios: number }[] = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = subMonths(new Date(), i);
+          months.push({ month: format(d, 'MMM'), date: d, episodios: 0 });
+        }
+        items.forEach(ep => {
+          const start = parseISO(ep.data_inicio);
+          months.forEach(m => {
+            if (isSameMonth(start, m.date)) m.episodios += 1;
+          });
+        });
+        setChartData(months.map(m => ({ month: m.month, episodios: m.episodios })));
+      } catch (err: any) {
+        console.error('Erro ao carregar episódios para dashboard:', err);
+        setErrorEpisodes('Erro ao carregar dados do dashboard');
+      } finally {
+        setLoadingEpisodes(false);
+      }
+    }
+
+    loadEpisodes();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-0">
@@ -78,25 +150,25 @@ export function Dashboard({ onNavigate, userName }: DashboardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Total este mês"
-            value="8"
+            value={loadingEpisodes ? '...' : String(totalThisMonth)}
             subtitle="episódios"
             color="primary"
           />
           <StatsCard
             title="Intensidade média"
-            value="6.5"
+            value={loadingEpisodes ? '...' : String(avgIntensity)}
             subtitle="de 10"
             color="secondary"
           />
           <StatsCard
             title="Gatilho comum"
-            value="Estresse"
-            subtitle="5 ocorrências"
+            value={loadingEpisodes ? '-' : mostCommonTrigger.name}
+            subtitle={loadingEpisodes ? '' : `${mostCommonTrigger.count} ocorrências`}
             color="success"
           />
           <StatsCard
             title="Duração média"
-            value="3.2h"
+            value={loadingEpisodes ? '...' : `${avgDurationHours}h`}
             subtitle="por episódio"
             color="warning"
           />

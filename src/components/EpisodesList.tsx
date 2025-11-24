@@ -29,7 +29,10 @@ export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
       try {
         setLoading(true);
         const data = await getEpisodios();
-        setEpisodes(data.results || []);
+        // O backend retorna um objeto paginado com o campo `items`
+        // (conforme `PaginatedEpisodios` em `lib/types.ts`).
+        // Antes estávamos acessando `results` por engano, ficando sem episódios.
+        setEpisodes(data.items || []);
       } catch (err: any) {
         console.error('Erro ao buscar episódios:', err);
         setError('Erro ao carregar episódios');

@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, Lightbulb, BarChart3, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Lightbulb, BarChart3, AlertCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval, parseISO, isSameMonth, getDay, getHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   LineChart,
@@ -30,6 +30,8 @@ import {
   PolarRadiusAxis,
   Radar,
 } from 'recharts';
+import { getEpisodios } from '../services/apiClient';
+import type { EpisodioOut, PaginatedEpisodios } from '../lib/types';
 
 interface AnalyticsPageProps {
   onBack?: () => void;
@@ -38,78 +40,147 @@ interface AnalyticsPageProps {
 export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
   const [dateFrom, setDateFrom] = useState<Date>(subMonths(new Date(), 6));
   const [dateTo, setDateTo] = useState<Date>(new Date());
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [triggersData, setTriggersData] = useState<any[]>([]);
+  const [medicationsEffectiveness, setMedicationsEffectiveness] = useState<any[]>([]);
+  const [intensityDistribution, setIntensityDistribution] = useState<any[]>([]);
+  const [weekdayPattern, setWeekdayPattern] = useState<any[]>([]);
+  const [hourPattern, setHourPattern] = useState<any[]>([]);
 
-  // Dados simulados - em produção viriam do backend
-  const monthlyData = [
-    { month: 'Mai', episodes: 4, avgIntensity: 6.5, totalDuration: 12 },
-    { month: 'Jun', episodes: 6, avgIntensity: 7.2, totalDuration: 18 },
-    { month: 'Jul', episodes: 3, avgIntensity: 5.8, totalDuration: 9 },
-    { month: 'Ago', episodes: 5, avgIntensity: 6.9, totalDuration: 15 },
-    { month: 'Set', episodes: 7, avgIntensity: 7.5, totalDuration: 21 },
-    { month: 'Out', episodes: 3, avgIntensity: 7.0, totalDuration: 11 },
-  ];
+  // Carrega dados reais do backend e calcula agregações
+  // Observação: usa o endpoint paginado `getEpisodios` com filtro por data
+  useEffect(() => {
+    async function loadAnalytics() {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: any = {
+          per_page: 1000,
+          data_inicio: format(startOfMonth(dateFrom), 'yyyy-MM-dd'),
+          data_fim: format(endOfMonth(dateTo), 'yyyy-MM-dd'),
+        };
+        const data: PaginatedEpisodios = await getEpisodios(params);
+        const items: EpisodioOut[] = data.items || [];
 
-  const triggersData = [
-    { name: 'Estresse', value: 12, percentage: 35 },
-    { name: 'Falta de sono', value: 8, percentage: 23 },
-    { name: 'Alimentos', value: 5, percentage: 15 },
-    { name: 'Luz forte', value: 4, percentage: 12 },
-    { name: 'Café', value: 3, percentage: 9 },
-    { name: 'Outros', value: 2, percentage: 6 },
-  ];
+        // Monthly aggregation
+        const months = eachMonthOfInterval({ start: dateFrom, end: dateTo });
+        const monthly = months.map((m) => ({ month: format(m, 'MMM'), episodes: 0, avgIntensity: 0, totalDuration: 0 }));
+        items.forEach(ep => {
+          const dt = parseISO(ep.data_inicio);
+          const mIndex = monthly.findIndex(m => isSameMonth(dt, parseISO(format(dateFrom, 'yyyy-MM-dd')))
+            ? monthly.findIndex(x => x.month === format(dt, 'MMM'))
+            : monthly.findIndex(x => x.month === format(dt, 'MMM')));
+          const idx = monthly.findIndex(x => x.month === format(dt, 'MMM'));
+          if (idx >= 0) {
+            monthly[idx].episodes += 1;
+            monthly[idx].avgIntensity += (ep.intensidade ?? 0);
+            if (ep.data_fim) {
+              const start = parseISO(ep.data_inicio);
+              const end = parseISO(ep.data_fim);
+              const diffMs = end.getTime() - start.getTime();
+              if (diffMs > 0) monthly[idx].totalDuration += diffMs / (1000 * 60); // minutes
+            }
+          }
+        });
+        monthly.forEach(m => {
+          if (m.episodes > 0) m.avgIntensity = +(m.avgIntensity / m.episodes).toFixed(1);
+        });
+        setMonthlyData(monthly.map(m => ({ month: m.month, episodes: m.episodes, avgIntensity: m.avgIntensity, totalDuration: Math.round(m.totalDuration) })));
 
-  const medicationsEffectiveness = [
-    { name: 'Paracetamol', effectiveness: 65, uses: 15 },
-    { name: 'Ibuprofeno', effectiveness: 78, uses: 10 },
-    { name: 'Dipirona', effectiveness: 70, uses: 8 },
-    { name: 'Sumatriptano', effectiveness: 85, uses: 6 },
-    { name: 'Naproxeno', effectiveness: 60, uses: 4 },
-  ];
+        // Triggers aggregation
+        const trigMap = new Map<string, number>();
+        items.forEach(ep => {
+          (ep.gatilhos || []).forEach(g => trigMap.set(g.nome, (trigMap.get(g.nome) || 0) + 1));
+        });
+        const trigArr = Array.from(trigMap.entries()).map(([name, value]) => ({ name, value }));
+        const totalTriggers = trigArr.reduce((s, t) => s + t.value, 0) || 1;
+        setTriggersData(trigArr.map(t => ({ name: t.name, value: t.value, percentage: Math.round((t.value / totalTriggers) * 100) })).sort((a,b)=>b.value-a.value));
 
-  const intensityDistribution = [
-    { range: '0-3 (Leve)', count: 5, color: '#2ECC71' },
-    { range: '4-6 (Moderada)', count: 12, color: '#F39C12' },
-    { range: '7-8 (Forte)', count: 8, color: '#E67E22' },
-    { range: '9-10 (Muito Forte)', count: 3, color: '#E74C3C' },
-  ];
+        // Medications effectiveness (uses count + simple effectiveness estimate)
+        const medMap = new Map<string, { uses: number; sumIntensity: number }>();
+        items.forEach(ep => {
+          (ep.medicacoes || []).forEach(m => {
+            const entry = medMap.get(m.nome) || { uses: 0, sumIntensity: 0 };
+            entry.uses += 1;
+            entry.sumIntensity += (ep.intensidade ?? 0);
+            medMap.set(m.nome, entry);
+          });
+        });
+        const overallAvgIntensity = items.reduce((s, e) => s + (e.intensidade ?? 0), 0) / (items.length || 1);
+        const medsArr = Array.from(medMap.entries()).map(([name, v]) => ({ name, uses: v.uses, effectiveness: Math.round(((overallAvgIntensity - (v.sumIntensity / v.uses || overallAvgIntensity)) / (overallAvgIntensity || 1)) * 100) }));
+        setMedicationsEffectiveness(medsArr.sort((a,b)=>b.effectiveness-a.effectiveness));
 
-  const weekdayPattern = [
-    { day: 'Dom', count: 2 },
-    { day: 'Seg', count: 6 },
-    { day: 'Ter', count: 5 },
-    { day: 'Qua', count: 4 },
-    { day: 'Qui', count: 7 },
-    { day: 'Sex', count: 3 },
-    { day: 'Sáb', count: 1 },
-  ];
+        // Intensity distribution buckets
+        const buckets = [ { range: '0-3 (Leve)', count:0, color:'#2ECC71'}, { range: '4-6 (Moderada)', count:0, color:'#F39C12'}, { range: '7-8 (Forte)', count:0, color:'#E67E22'}, { range: '9-10 (Muito Forte)', count:0, color:'#E74C3C'} ];
+        items.forEach(ep => {
+          const v = ep.intensidade ?? 0;
+          if (v <= 3) buckets[0].count +=1;
+          else if (v <=6) buckets[1].count +=1;
+          else if (v <=8) buckets[2].count +=1;
+          else buckets[3].count +=1;
+        });
+        setIntensityDistribution(buckets);
 
-  const hourPattern = [
-    { hour: '00-06', count: 1 },
-    { hour: '06-12', count: 8 },
-    { hour: '12-18', count: 12 },
-    { hour: '18-24', count: 7 },
-  ];
+        // Weekday pattern
+        const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => ({ day:d, count:0 }));
+        items.forEach(ep => {
+          const d = parseISO(ep.data_inicio);
+          const w = getDay(d);
+          days[w].count +=1;
+        });
+        setWeekdayPattern(days);
+
+        // Hour pattern
+        const hours = [ { hour:'00-06', count:0 }, { hour:'06-12', count:0 }, { hour:'12-18', count:0 }, { hour:'18-24', count:0 } ];
+        items.forEach(ep => {
+          const h = getHours(parseISO(ep.data_inicio));
+          if (h < 6) hours[0].count +=1;
+          else if (h < 12) hours[1].count +=1;
+          else if (h < 18) hours[2].count +=1;
+          else hours[3].count +=1;
+        });
+        setHourPattern(hours);
+
+      } catch (err: any) {
+        console.error('Erro ao carregar analytics:', err);
+        setError('Erro ao carregar dados');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAnalytics();
+  }, [dateFrom, dateTo]);
+
+  // weekdayPattern and hourPattern are populated from backend results (state)
 
   // Cálculos de insights
-  const totalEpisodes = monthlyData.reduce((acc, m) => acc + m.episodes, 0);
-  const avgIntensity = (monthlyData.reduce((acc, m) => acc + m.avgIntensity, 0) / monthlyData.length).toFixed(1);
-  const currentMonthEpisodes = monthlyData[monthlyData.length - 1].episodes;
-  const previousMonthEpisodes = monthlyData[monthlyData.length - 2].episodes;
+  const totalEpisodes = monthlyData.reduce((acc, m) => acc + (m.episodes || 0), 0);
+  const avgIntensity = ((monthlyData.reduce((acc, m) => acc + (m.avgIntensity || 0), 0) / (monthlyData.length || 1)) || 0).toFixed(1);
+  const currentMonthEpisodes = monthlyData.length ? (monthlyData[monthlyData.length - 1].episodes || 0) : 0;
+  const previousMonthEpisodes = monthlyData.length > 1 ? (monthlyData[monthlyData.length - 2].episodes || 0) : 0;
   const episodeTrend = currentMonthEpisodes - previousMonthEpisodes;
-  const trendPercentage = ((episodeTrend / previousMonthEpisodes) * 100).toFixed(0);
+  const trendPercentage = previousMonthEpisodes > 0 ? ((episodeTrend / previousMonthEpisodes) * 100).toFixed(0) : '0';
 
-  const mostCommonTrigger = triggersData[0];
-  const mostEffectiveMedication = medicationsEffectiveness.reduce((prev, current) => 
-    (current.effectiveness > prev.effectiveness) ? current : prev
-  );
-  const peakDay = weekdayPattern.reduce((prev, current) => 
-    (current.count > prev.count) ? current : prev
-  );
-  const peakHour = hourPattern.reduce((prev, current) => 
-    (current.count > prev.count) ? current : prev
-  );
+  const mostCommonTrigger = triggersData.length ? triggersData[0] : { name: '-', percentage: 0 };
+  const mostEffectiveMedication = medicationsEffectiveness.length ? medicationsEffectiveness.reduce((prev, current) => (current.effectiveness > prev.effectiveness) ? current : prev) : { name: '-', effectiveness: 0 };
+  const peakDay = weekdayPattern.length ? weekdayPattern.reduce((prev, current) => (current.count > prev.count) ? current : prev) : { day: '-', count: 0 };
+  const peakHour = hourPattern.length ? hourPattern.reduce((prev, current) => (current.count > prev.count) ? current : prev) : { hour: '-', count: 0 };
 
   const COLORS = ['#6C63FF', '#FF6F91', '#2ECC71', '#F39C12', '#E67E22', '#E74C3C'];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-[#6C63FF]" />
+          <p className="text-[#666666]">Carregando análises...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
@@ -127,7 +198,7 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
           <div className="flex gap-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button className="w-full justify-start text-left mt-1">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {format(dateFrom, 'dd/MM/yy')} - {format(dateTo, 'dd/MM/yy')}
                 </Button>
@@ -139,7 +210,7 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
                     <Calendar
                       mode="single"
                       selected={dateFrom}
-                      onSelect={(date) => date && setDateFrom(date)}
+                      onSelect={(date: Date | null) => date && setDateFrom(date)}
                       locale={ptBR}
                     />
                   </div>
@@ -148,7 +219,7 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
                     <Calendar
                       mode="single"
                       selected={dateTo}
-                      onSelect={(date) => date && setDateTo(date)}
+                      onSelect={(date: Date | null) => date && setDateTo(date)}
                       locale={ptBR}
                     />
                   </div>
