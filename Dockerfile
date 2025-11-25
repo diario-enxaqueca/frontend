@@ -1,4 +1,3 @@
-
 # Frontend multi-stage build: Vite (builder) -> Nginx (serving static files)
 FROM node:18-slim AS builder
 WORKDIR /app
@@ -13,6 +12,13 @@ RUN apt-get update \
 		curl \
 	&& rm -rf /var/lib/apt/lists/*
 
+ARG VITE_BACKEND_URL
+ARG VITE_AUTH_URL
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_AUTH_URL=${VITE_AUTH_URL}
+
+
+
 COPY package*.json ./
 ENV CI=true
 # Use `npm install` here because `npm ci` requires package.json and package-lock.json
@@ -20,7 +26,7 @@ ENV CI=true
 # so `npm install` will resolve/install dependencies and continue the build.
 RUN npm install --legacy-peer-deps --no-audit --progress=false
 COPY . .
-
+COPY ca.pem /app/ca.pem
 # Build and verify output exists. If no /app/dist is produced, fail with a clear message
 RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_URL=$VITE_AUTH_URL" \
     && npm run build \
@@ -37,9 +43,20 @@ RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_UR
 	fi
 
 FROM nginx:alpine
-RUN apk add --no-cache gettext ca-certificates
+RUN apk add --no-cache ca-certificates
+
+ARG BACKEND_HOST
+ARG AUTH_HOST
+ENV BACKEND_HOST=${BACKEND_HOST}
+ENV AUTH_HOST=${AUTH_HOST}
+
+ARG VITE_BACKEND_URL
+ARG VITE_AUTH_URL
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_AUTH_URL=${VITE_AUTH_URL}
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY ca.pem /app/ca.pem
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

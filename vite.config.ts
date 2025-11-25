@@ -56,5 +56,15 @@
     server: {
       port: 3000,
       open: true,
+      proxy: {
+        '/api': {
+          target: process.env.BACKEND_URL || 'http://localhost:8000',
+          changeOrigin: true,
+        },
+        '/api/auth': {
+          target: process.env.AUTH_URL || 'http://localhost:8001',
+          changeOrigin: true,
+        },
+      },
     },
   });

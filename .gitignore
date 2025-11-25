@@ -1,3 +1,10 @@
+# Diferenças - produção
+Dockerfile
+vite.config.ts
+nginx.conf
+src/services/apiClient.ts
+
+
 # Logs
 logs
 *.log
