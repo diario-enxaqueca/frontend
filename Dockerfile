@@ -21,6 +21,13 @@ ENV CI=true
 RUN npm install --legacy-peer-deps --no-audit --progress=false
 COPY . .
 
+# Variáveis de ambiente para build
+ARG VITE_BACKEND_URL
+ARG VITE_AUTH_URL
+
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_AUTH_URL=$VITE_AUTH_URL
+
 # Build and verify output exists. If no /app/dist is produced, fail with a clear message
 RUN echo "Building frontend with VITE_BACKEND_URL=$VITE_BACKEND_URL VITE_AUTH_URL=$VITE_AUTH_URL" \
     && npm run build \
@@ -41,6 +48,8 @@ RUN apk add --no-cache gettext ca-certificates
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# Remove configuração padrão e adiciona nossa
+RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
