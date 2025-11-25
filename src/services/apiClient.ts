@@ -26,7 +26,7 @@ import {
 
 // Configura o axios com a base URL da API backend.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL + '/',
+  baseURL: 'https://backend-production-f9d7.up.railway.app/api/',
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ const api = axios.create({
 
 // Cliente separado para o serviço de autenticação
 const authApi = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_URL + '/',
+  baseURL: 'https://autenticacao-production-00f7.up.railway.app/api/auth',
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
