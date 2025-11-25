@@ -64,7 +64,7 @@ class TestDiariodeenxaquecaloginlogout():
         print("Campo de senha clicado")
         time.sleep(1)
 
-        password_field.send_keys("87654321")
+        password_field.send_keys("12345678")
         print("Senha digitada")
         time.sleep(1)
 
