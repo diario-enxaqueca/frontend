@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Filter, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -8,8 +8,16 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { EpisodeCard } from './EpisodeCard';
 import { EmptyState } from './EmptyState';
 import { BottomNav } from './BottomNav';
-import { getEpisodios } from '../services/apiClient';
-import type { EpisodioOut } from '../lib/types';
+
+interface Episode {
+  id: string;
+  date: string;
+  intensity: number;
+  duration: string;
+  triggers: string[];
+  medications: string[];
+  notes?: string;
+}
 
 interface EpisodesListProps {
   onViewEpisode?: (id: string) => void;
@@ -17,32 +25,36 @@ interface EpisodesListProps {
 }
 
 export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
-  const [episodes, setEpisodes] = useState<EpisodioOut[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [intensityFilter, setIntensityFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
-    const fetchEpisodes = async () => {
-      try {
-        setLoading(true);
-        const data = await getEpisodios();
-        // O backend retorna um objeto paginado com o campo `items`
-        // (conforme `PaginatedEpisodios` em `lib/types.ts`).
-        // Antes estávamos acessando `results` por engano, ficando sem episódios.
-        setEpisodes(data.items || []);
-      } catch (err: any) {
-        console.error('Erro ao buscar episódios:', err);
-        setError('Erro ao carregar episódios');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEpisodes();
-  }, []);
+  // Dados de exemplo
+  const episodes: Episode[] = [
+    {
+      id: '1',
+      date: '23/10/2025',
+      intensity: 9,
+      duration: '4h',
+      triggers: ['Estresse', 'Falta de sono'],
+      medications: ['Paracetamol'],
+    },
+    {
+      id: '2',
+      date: '21/10/2025',
+      intensity: 6,
+      duration: '2h 30min',
+      triggers: ['Alimentos específicos', 'Telas prolongadas'],
+      medications: ['Ibuprofeno'],
+    },
+    {
+      id: '3',
+      date: '18/10/2025',
+      intensity: 3,
+      duration: '1h 15min',
+      triggers: ['Mudanças climáticas'],
+    },
+  ];
 
   const handleEdit = (id: string) => {
     console.log('Editar episódio:', id);
@@ -55,38 +67,14 @@ export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
   };
 
   const handleAddEpisode = () => {
-    onNavigate?.('episode-form');
+    console.log('Adicionar novo episódio');
   };
 
   const handleSearch = () => {
     console.log('Buscar episódios');
   };
 
-  const showEmptyState = !loading && !error && episodes.length === 0;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#6C63FF]" />
-          <p className="text-[#666666]">Carregando episódios...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-[#6C63FF] hover:bg-[#5850E6]">
-            Tentar novamente
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const showEmptyState = episodes.length === 0;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">

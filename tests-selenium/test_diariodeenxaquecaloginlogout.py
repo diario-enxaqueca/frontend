@@ -1,5 +1,7 @@
 # Teste automatizado de login e logout no Diário de Enxaqueca
+# pylint: disable=attribute-defined-outside-init
 import time
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
@@ -12,7 +14,7 @@ class TestDiariodeenxaquecaloginlogout():
     Inclui pausas para visualização do teste em execução
     """
 
-    def setup_method(self, method):
+    def setup_method(self, _):
         # Configurar Firefox para visualização (não headless)
         options = webdriver.FirefoxOptions()
         options.add_argument("--disable-web-security")
@@ -23,9 +25,9 @@ class TestDiariodeenxaquecaloginlogout():
         self.driver = webdriver.Firefox(options=options)
         self.vars = {}
 
-    def teardown_method(self, method):
+    def teardown_method(self, _):
         self.driver.quit()
-  
+
     def test_diariodeenxaquecaloginlogout(self):
         """
         Teste completo de fluxo: abrir página → login → logout

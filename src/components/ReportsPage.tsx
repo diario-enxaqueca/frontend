@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FileDown, FileText, FileSpreadsheet, Calendar as CalendarIcon, Filter, TrendingUp, TrendingDown, Minus, Lightbulb, BarChart3, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { FileDown, FileText, FileSpreadsheet, Calendar as CalendarIcon, Filter, TrendingUp, TrendingDown, Minus, Lightbulb, BarChart3 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Label } from './ui/label';
@@ -13,8 +13,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getEpisodios } from '../services/apiClient';
-import type { EpisodioOut, PaginatedEpisodios } from '../lib/types';
 import {
   LineChart,
   Line,
@@ -33,15 +31,24 @@ import {
   AreaChart,
 } from 'recharts';
 
-// Local UI shape mapped from backend `EpisodioOut`
 interface Episode {
   id: string;
-  date: string; // ISO
+  date: string;
   intensity: number;
-  duration: string; // human readable
+  duration: string;
   triggers: string[];
   medications: string[];
-  notes?: string | null;
+  notes?: string;
+}
+
+interface Trigger {
+  name: string;
+  usageCount: number;
+}
+
+interface Medication {
+  name: string;
+  usageCount: number;
 }
 
 interface ReportsPageProps {
@@ -49,17 +56,43 @@ interface ReportsPageProps {
 }
 
 export function ReportsPage({ onBack }: ReportsPageProps) {
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<Date>();
+  const [dateTo, setDateTo] = useState<Date>();
   const [reportType, setReportType] = useState<'summary' | 'detailed'>('summary');
   const [includeStats, setIncludeStats] = useState(true);
   const [includeEpisodes, setIncludeEpisodes] = useState(true);
   const [includeTriggers, setIncludeTriggers] = useState(true);
   const [includeMedications, setIncludeMedications] = useState(true);
 
-  // Episodes state populated from backend
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  // Dados de exemplo - em produção viriam do backend
+  const episodes: Episode[] = [
+    {
+      id: '1',
+      date: '2025-10-23',
+      intensity: 9,
+      duration: '4h',
+      triggers: ['Estresse', 'Falta de sono'],
+      medications: ['Paracetamol', 'Ibuprofeno'],
+      notes: 'Episódio muito intenso após dia de trabalho',
+    },
+    {
+      id: '2',
+      date: '2025-10-20',
+      intensity: 6,
+      duration: '2h',
+      triggers: ['Alimentos específicos'],
+      medications: ['Paracetamol'],
+      notes: 'Melhorou após medicação',
+    },
+    {
+      id: '3',
+      date: '2025-10-15',
+      intensity: 8,
+      duration: '3h 30min',
+      triggers: ['Estresse', 'Telas prolongadas'],
+      medications: ['Dipirona'],
+    },
+  ];
 
   const getFilteredEpisodes = () => {
     return episodes.filter((episode) => {
@@ -69,63 +102,6 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
       return true;
     });
   };
-
-  // Helper: convert backend EpisodioOut -> Episode (UI shape)
-  const mapEpisodioToEpisode = (e: EpisodioOut): Episode => {
-    // duration: compute from data_inicio / data_fim if available
-    let duration = '-';
-    try {
-      if (e.data_fim) {
-        const start = new Date(e.data_inicio);
-        const end = new Date(e.data_fim);
-        const diffMs = Math.max(0, end.getTime() - start.getTime());
-        const minutes = Math.round(diffMs / 60000);
-        if (minutes >= 60) {
-          const h = Math.floor(minutes / 60);
-          const m = minutes % 60;
-          duration = m === 0 ? `${h}h` : `${h}h ${m}m`;
-        } else {
-          duration = `${minutes}m`;
-        }
-      }
-    } catch (err) {
-      duration = '-';
-    }
-
-    return {
-      id: String(e.id),
-      date: e.data_inicio,
-      intensity: e.intensidade ?? 0,
-      duration,
-      triggers: (e.gatilhos || []).map(g => g.nome),
-      medications: (e.medicacoes || []).map(m => m.nome),
-      notes: e.observacoes ?? null,
-    };
-  };
-
-  // Fetch episodes from backend when date filters change
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      setLoading(true);
-      try {
-        const params: any = { per_page: 1000 };
-        if (dateFrom) params.data_inicio = format(dateFrom, 'yyyy-MM-dd');
-        if (dateTo) params.data_fim = format(dateTo, 'yyyy-MM-dd');
-        const data: PaginatedEpisodios = await getEpisodios(params);
-        if (!active) return;
-        const mapped = (data.items || []).map(mapEpisodioToEpisode);
-        setEpisodes(mapped);
-      } catch (err) {
-        console.error('Erro ao carregar episódios para relatórios', err);
-        setEpisodes([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-    return () => { active = false; };
-  }, [dateFrom, dateTo]);
 
   const calculateStats = (episodes: Episode[]) => {
     if (episodes.length === 0) {
@@ -390,6 +366,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
                     <PopoverTrigger asChild>
                       <Button
                         id="date-from"
+                        variant="outline"
                         className="w-full justify-start text-left mt-1"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -400,7 +377,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
                       <Calendar
                         mode="single"
                         selected={dateFrom}
-                        onSelect={(date: Date | null) => date && setDateFrom(date)}
+                        onSelect={setDateFrom}
                         locale={ptBR}
                         initialFocus
                       />
@@ -416,6 +393,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
                     <PopoverTrigger asChild>
                       <Button
                         id="date-to"
+                        variant="outline"
                         className="w-full justify-start text-left mt-1"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -426,7 +404,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
                       <Calendar
                         mode="single"
                         selected={dateTo}
-                        onSelect={(date: Date | null) => date && setDateTo(date)}
+                        onSelect={setDateTo}
                         locale={ptBR}
                         initialFocus
                       />
@@ -436,6 +414,8 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
               </div>
               {dateFrom && dateTo && (
                 <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setDateFrom(undefined);
                     setDateTo(undefined);
@@ -519,17 +499,10 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
         <Card className="shadow-md bg-[#F8F9FA] border-2 border-dashed border-[#6C63FF]/30">
           <CardContent className="py-6">
             <div className="text-center space-y-2">
-              {loading ? (
-                <div className="text-center">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-[#6C63FF]" />
-                  <p className="text-[#666666]">Carregando dados para o relatório...</p>
-                </div>
-              ) : (
-                <p className="text-[#717182]">
-                  {filteredCount} {filteredCount === 1 ? 'episódio' : 'episódios'}{' '}
-                  {dateFrom && dateTo ? 'no período selecionado' : 'no total'}
-                </p>
-              )}
+              <p className="text-[#717182]">
+                {filteredCount} {filteredCount === 1 ? 'episódio' : 'episódios'}{' '}
+                {dateFrom && dateTo ? 'no período selecionado' : 'no total'}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -540,17 +513,15 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
             <CardContent className="py-8">
               <Button
                 onClick={exportToPDF}
-                disabled={loading || filteredCount === 0}
+                disabled={filteredCount === 0}
                 className="w-full h-auto py-6 flex-col gap-3 bg-[#6C63FF] hover:bg-[#5850E6] text-white"
               >
-                {loading ? (
-                  <Loader2 className="w-8 h-8 animate-spin" />
-                ) : (
-                  <FileText className="w-12 h-12" />
-                )}
+                <FileText className="w-12 h-12" />
                 <div>
                   <div className="font-semibold">Exportar como PDF</div>
-                  <div className="text-xs opacity-90 mt-1">Relatório formatado e visual</div>
+                  <div className="text-xs opacity-90 mt-1">
+                    Relatório formatado e visual
+                  </div>
                 </div>
               </Button>
             </CardContent>
@@ -560,17 +531,15 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
             <CardContent className="py-8">
               <Button
                 onClick={exportToCSV}
-                disabled={loading || filteredCount === 0}
+                disabled={filteredCount === 0}
                 className="w-full h-auto py-6 flex-col gap-3 bg-[#2ECC71] hover:bg-[#27AE60] text-white"
               >
-                {loading ? (
-                  <Loader2 className="w-8 h-8 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="w-12 h-12" />
-                )}
+                <FileSpreadsheet className="w-12 h-12" />
                 <div>
                   <div className="font-semibold">Exportar como CSV</div>
-                  <div className="text-xs opacity-90 mt-1">Planilha para Excel/Google Sheets</div>
+                  <div className="text-xs opacity-90 mt-1">
+                    Planilha para Excel/Google Sheets
+                  </div>
                 </div>
               </Button>
             </CardContent>
