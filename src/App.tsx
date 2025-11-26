@@ -38,6 +38,7 @@ export default function App() {
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
+  const [episodesRefreshTrigger, setEpisodesRefreshTrigger] = useState(0);
 
   const handleLogin = (name?: string) => {
     setIsAuthenticated(true);
@@ -118,10 +119,10 @@ export default function App() {
         return <Dashboard onNavigate={navigateTo} userName={userName} />;
       
       case 'episodes':
-        return <EpisodesList onViewEpisode={handleViewEpisode} onNavigate={navigateTo} />;
+        return <EpisodesList onViewEpisode={handleViewEpisode} onNavigate={navigateTo} refreshTrigger={episodesRefreshTrigger} />;
       
       case 'episode-form':
-        return <EpisodeForm episodeId={selectedEpisodeId} onBack={() => navigateTo('episodes')} />;
+        return <EpisodeForm episodeId={selectedEpisodeId} onBack={() => navigateTo('episodes')} onSuccess={() => { setEpisodesRefreshTrigger(prev => prev + 1); navigateTo('episodes'); }} />;
       
       case 'episode-detail':
         return (
