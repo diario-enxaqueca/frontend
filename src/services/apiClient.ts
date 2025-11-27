@@ -24,9 +24,13 @@ import {
   EpisodioQueryParams
 } from '../lib/types';
 
+// Obter URLs da API de variáveis de ambiente ou usar defaults
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '/api';
+const AUTH_URL = import.meta.env.VITE_AUTH_URL || '/api/auth';
+
 // Configura o axios com a base URL da API backend.
 const api = axios.create({
-  baseURL: '/api/',
+  baseURL: BACKEND_URL,
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
@@ -35,7 +39,7 @@ const api = axios.create({
 
 // Cliente separado para o serviço de autenticação
 const authApi = axios.create({
-  baseURL: '/api/auth/',
+  baseURL: AUTH_URL,
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
