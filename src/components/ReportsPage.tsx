@@ -335,8 +335,7 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
   const filteredCount = getFilteredEpisodes().length;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-[#333333]">Relatórios e Exportação</h1>
@@ -562,7 +561,6 @@ export function ReportsPage({ onBack }: ReportsPageProps) {
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

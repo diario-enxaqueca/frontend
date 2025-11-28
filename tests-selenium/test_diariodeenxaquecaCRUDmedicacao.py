@@ -110,4 +110,3 @@ class TestDiariodeenxaquecaCRUDmedicacao():
         print("\n" + "=" * 60)
         print("TESTE CRUD DE MEDICAÇÕES CONCLUÍDO COM SUCESSO")
         print("=" * 60)
-

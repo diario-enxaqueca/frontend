@@ -54,6 +54,7 @@ export interface GatilhoOut {
   id: number;
   nome: string;
   usuario_id: number;
+  data_criacao: string;
 }
 
 export interface GatilhoUpdate {
@@ -72,6 +73,7 @@ export interface MedicacaoOut {
   nome: string;
   dosagem: string | null;
   usuario_id: number;
+  data_criacao: string;
 }
 
 export interface MedicacaoUpdate {

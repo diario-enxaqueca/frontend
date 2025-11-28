@@ -114,12 +114,14 @@ export default function App() {
 
   // Renderiza a página atual
   const renderPage = () => {
+    console.log('📄 Renderizando página:', currentPage);
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard onNavigate={navigateTo} userName={userName} />;
       
       case 'episodes':
-        return <EpisodesList onViewEpisode={handleViewEpisode} onNavigate={navigateTo} refreshTrigger={episodesRefreshTrigger} />;
+        console.log('✅ Renderizando EpisodesList');
+        return <EpisodesList onViewEpisode={handleViewEpisode} onEditEpisode={handleEditEpisode} onNavigate={navigateTo} refreshTrigger={episodesRefreshTrigger} />;
       
       case 'episode-form':
         return <EpisodeForm episodeId={selectedEpisodeId} onBack={() => navigateTo('episodes')} onSuccess={() => { setEpisodesRefreshTrigger(prev => prev + 1); navigateTo('episodes'); }} />;

@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from './ui/pagination';
 import { EpisodeCard } from './EpisodeCard';
 import { EmptyState } from './EmptyState';
-import { BottomNav } from './BottomNav';
 
 interface Episode {
   id: string;
@@ -21,43 +20,75 @@ interface Episode {
 
 interface EpisodesListProps {
   onViewEpisode?: (id: string) => void;
+  onEditEpisode?: (id: string) => void;
   onNavigate?: (page: string) => void;
+  refreshTrigger?: number;
 }
 
-export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
+export function EpisodesList({ onViewEpisode, onEditEpisode, onNavigate, refreshTrigger }: EpisodesListProps) {
   const [intensityFilter, setIntensityFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Dados de exemplo
-  const episodes: Episode[] = [
+  // Dados de exemplo - adaptados para o formato EpisodioOut
+  const episodes = [
     {
-      id: '1',
-      date: '23/10/2025',
-      intensity: 9,
-      duration: '4h',
-      triggers: ['Estresse', 'Falta de sono'],
-      medications: ['Paracetamol'],
+      id: 1,
+      data_inicio: '2025-10-23T10:00:00',
+      data_fim: '2025-10-23T14:00:00',
+      intensidade: 9,
+      localizacao: 'Frontal',
+      duracao_estimada: 240,
+      observacoes: 'Episódio muito forte',
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 1, nome: 'Estresse', usuario_id: 1 },
+        { id: 2, nome: 'Falta de sono', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 1, nome: 'Paracetamol', dosagem: '500mg', usuario_id: 1 }
+      ],
     },
     {
-      id: '2',
-      date: '21/10/2025',
-      intensity: 6,
-      duration: '2h 30min',
-      triggers: ['Alimentos específicos', 'Telas prolongadas'],
-      medications: ['Ibuprofeno'],
+      id: 2,
+      data_inicio: '2025-10-21T08:00:00',
+      data_fim: '2025-10-21T10:30:00',
+      intensidade: 6,
+      localizacao: 'Temporal',
+      duracao_estimada: 150,
+      observacoes: 'Melhorou após medicação',
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 3, nome: 'Alimentos específicos', usuario_id: 1 },
+        { id: 4, nome: 'Telas prolongadas', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 2, nome: 'Ibuprofeno', dosagem: '400mg', usuario_id: 1 }
+      ],
     },
     {
-      id: '3',
-      date: '18/10/2025',
-      intensity: 3,
-      duration: '1h 15min',
-      triggers: ['Mudanças climáticas'],
+      id: 3,
+      data_inicio: '2025-10-18T15:00:00',
+      data_fim: '2025-10-18T16:15:00',
+      intensidade: 3,
+      localizacao: 'Occipital',
+      duracao_estimada: 75,
+      observacoes: 'Leve',
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 5, nome: 'Mudanças climáticas', usuario_id: 1 }
+      ],
+      medicacoes: [],
     },
   ];
 
   const handleEdit = (id: string) => {
-    console.log('Editar episódio:', id);
+    if (onEditEpisode) {
+      onEditEpisode(id);
+    }
   };
 
   const handleViewDetails = (id: string) => {
@@ -67,7 +98,9 @@ export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
   };
 
   const handleAddEpisode = () => {
-    console.log('Adicionar novo episódio');
+    if (onNavigate) {
+      onNavigate('episode-form');
+    }
   };
 
   const handleSearch = () => {
@@ -75,10 +108,10 @@ export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
   };
 
   const showEmptyState = episodes.length === 0;
+  console.log('🎯 EpisodesList - showEmptyState:', showEmptyState, 'episodes:', episodes.length);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header da Página */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-[#333333]">Meus Episódios</h1>
@@ -201,9 +234,6 @@ export function EpisodesList({ onViewEpisode, onNavigate }: EpisodesListProps) {
             </div>
           </>
         )}
-      </main>
-
-      <BottomNav />
     </div>
   );
 }

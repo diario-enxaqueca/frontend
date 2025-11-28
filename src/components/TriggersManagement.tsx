@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from './ui/dialog';
 import {
@@ -24,12 +25,7 @@ import {
 } from './ui/alert-dialog';
 import { getGatilhos, createGatilho, updateGatilho, deleteGatilho } from '../services/apiClient';
 import type { GatilhoOut } from '../lib/types';
-
-interface Trigger {
-  id: string;
-  name: string;
-  usageCount: number;
-}
+import { useToast, ToastContainer } from './ui/toast';
 
 interface TriggersManagementProps {
   onBack?: () => void;
@@ -45,6 +41,8 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
   const [triggerToDelete, setTriggerToDelete] = useState<GatilhoOut | null>(null);
   const [triggerName, setTriggerName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { toasts, removeToast, success, error: showError } = useToast();
 
   useEffect(() => {
     fetchTriggers();
@@ -89,13 +87,18 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
   const confirmDelete = async () => {
     if (triggerToDelete) {
       try {
+        setDeleting(true);
         await deleteGatilho(triggerToDelete.id);
         setTriggers(triggers.filter((t) => t.id !== triggerToDelete.id));
+        success(`Gatilho "${triggerToDelete.nome}" excluído com sucesso`);
         setTriggerToDelete(null);
         setShowDeleteDialog(false);
       } catch (err: any) {
         console.error('Erro ao deletar gatilho:', err);
-        alert('Erro ao deletar gatilho');
+        const errorMessage = err.response?.data?.detail || 'Erro ao deletar gatilho';
+        showError(errorMessage);
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -103,13 +106,13 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
   const handleSave = async () => {
     if (!triggerName.trim()) return;
 
-    // Verificar duplicata
+    // Verificar duplicata no frontend (validação rápida de UX)
     const duplicateTrigger = triggers.find(
       (t) => t.nome.toLowerCase() === triggerName.trim().toLowerCase() && t.id !== editingTrigger?.id
     );
 
     if (duplicateTrigger) {
-      alert('Já existe um gatilho com este nome');
+      showError('Já existe um gatilho com este nome');
       return;
     }
 
@@ -117,21 +120,24 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
       setSaving(true);
       if (editingTrigger) {
         // Atualizar
-        await updateGatilho(editingTrigger.id, { nome: triggerName.trim() });
+        const updatedTrigger = await updateGatilho(editingTrigger.id, { nome: triggerName.trim() });
         setTriggers(triggers.map(t => 
-          t.id === editingTrigger.id ? { ...t, nome: triggerName.trim() } : t
-        ));
+          t.id === editingTrigger.id ? updatedTrigger : t
+        ).sort((a, b) => a.nome.localeCompare(b.nome)));
+        success(`Gatilho "${triggerName.trim()}" atualizado com sucesso`);
       } else {
         // Criar novo
         const newTrigger = await createGatilho({ nome: triggerName.trim() });
-        setTriggers([...triggers, newTrigger]);
+        setTriggers([...triggers, newTrigger].sort((a, b) => a.nome.localeCompare(b.nome)));
+        success(`Gatilho "${triggerName.trim()}" cadastrado com sucesso`);
       }
       setShowDialog(false);
       setTriggerName('');
       setEditingTrigger(null);
     } catch (err: any) {
       console.error('Erro ao salvar gatilho:', err);
-      alert('Erro ao salvar gatilho');
+      const errorMessage = err.response?.data?.detail || 'Erro ao salvar gatilho';
+      showError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -168,7 +174,9 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
+    <div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
@@ -255,6 +263,11 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
             <DialogTitle>
               {editingTrigger ? 'Editar Gatilho' : 'Novo Gatilho'}
             </DialogTitle>
+            <DialogDescription>
+              {editingTrigger 
+                ? 'Altere o nome do gatilho abaixo.'
+                : 'Adicione um novo gatilho que desencadeia suas enxaquecas.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Label htmlFor="trigger-name" className="mb-2 block">
@@ -276,15 +289,22 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
+            <Button variant="outline" onClick={handleCloseDialog} disabled={saving}>
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!triggerName.trim()}
+              disabled={!triggerName.trim() || saving}
               className="bg-[#6C63FF] hover:bg-[#5850E6]"
             >
-              {editingTrigger ? 'Salvar' : 'Adicionar'}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                editingTrigger ? 'Salvar' : 'Adicionar'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,21 +317,24 @@ export function TriggersManagement({ onBack }: TriggersManagementProps) {
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir o gatilho "{triggerToDelete?.nome}"?
-              {triggerToDelete && triggerToDelete.usageCount > 0 && (
-                <span className="block mt-2 text-[#E67E22]">
-                  Este gatilho está sendo usado em {triggerToDelete.usageCount}{' '}
-                  {triggerToDelete.usageCount === 1 ? 'episódio' : 'episódios'}.
-                </span>
-              )}
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deleting}
               className="bg-[#E74C3C] hover:bg-[#C0392B]"
             >
-              Excluir
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

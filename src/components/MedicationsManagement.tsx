@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from './ui/dialog';
 import {
@@ -23,13 +24,7 @@ import {
 } from './ui/alert-dialog';
 import { getMedicacoes, createMedicacao, updateMedicacao, deleteMedicacao } from '../services/apiClient';
 import type { MedicacaoOut } from '../lib/types';
-
-interface Medication {
-  id: string;
-  name: string;
-  dosage?: string;
-  usageCount: number;
-}
+import { useToast, ToastContainer } from './ui/toast';
 
 interface MedicationsManagementProps {
   onBack?: () => void;
@@ -46,6 +41,8 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
   const [medicationName, setMedicationName] = useState('');
   const [medicationDosage, setMedicationDosage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { toasts, removeToast, success, error: showError } = useToast();
 
   useEffect(() => {
     fetchMedications();
@@ -92,13 +89,18 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
   const confirmDelete = async () => {
     if (medicationToDelete) {
       try {
+        setDeleting(true);
         await deleteMedicacao(medicationToDelete.id);
         setMedications(medications.filter((m) => m.id !== medicationToDelete.id));
+        success(`Medicação "${medicationToDelete.nome}" excluída com sucesso`);
         setMedicationToDelete(null);
         setShowDeleteDialog(false);
       } catch (err: any) {
         console.error('Erro ao deletar medicação:', err);
-        alert('Erro ao deletar medicação');
+        const errorMessage = err.response?.data?.detail || 'Erro ao deletar medicação';
+        showError(errorMessage);
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -106,7 +108,7 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
   const handleSave = async () => {
     if (!medicationName.trim()) return;
 
-    // Verificar duplicata
+    // Verificar duplicata no frontend (validação rápida de UX)
     const duplicateMedication = medications.find(
       (m) => 
         m.nome.toLowerCase() === medicationName.trim().toLowerCase() &&
@@ -114,13 +116,13 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
     );
 
     if (duplicateMedication) {
-      alert('Já existe uma medicação com este nome');
+      showError('Já existe uma medicação com este nome');
       return;
     }
 
     // Validar dosagem
     if (medicationDosage.length > 100) {
-      alert('Dosagem excede 100 caracteres');
+      showError('Dosagem excede 100 caracteres');
       return;
     }
 
@@ -128,20 +130,22 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
       setSaving(true);
       if (editingMedication) {
         // Atualizar
-        await updateMedicacao(editingMedication.id, { 
+        const updatedMedication = await updateMedicacao(editingMedication.id, { 
           nome: medicationName.trim(), 
-          dosagem: medicationDosage.trim() || "" 
+          dosagem: medicationDosage.trim() || null
         });
         setMedications(medications.map(m => 
-          m.id === editingMedication.id ? { ...m, nome: medicationName.trim(), dosagem: medicationDosage.trim() || "" } : m
-        ));
+          m.id === editingMedication.id ? updatedMedication : m
+        ).sort((a, b) => a.nome.localeCompare(b.nome)));
+        success(`Medicação "${medicationName.trim()}" atualizada com sucesso`);
       } else {
         // Criar novo
         const newMedication = await createMedicacao({ 
           nome: medicationName.trim(), 
-          dosagem: medicationDosage.trim() || "" 
+          dosagem: medicationDosage.trim() || null
         });
-        setMedications([...medications, newMedication]);
+        setMedications([...medications, newMedication].sort((a, b) => a.nome.localeCompare(b.nome)));
+        success(`Medicação "${medicationName.trim()}" cadastrada com sucesso`);
       }
       setShowDialog(false);
       setMedicationName('');
@@ -149,7 +153,8 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
       setEditingMedication(null);
     } catch (err: any) {
       console.error('Erro ao salvar medicação:', err);
-      alert('Erro ao salvar medicação');
+      const errorMessage = err.response?.data?.detail || 'Erro ao salvar medicação';
+      showError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -163,7 +168,9 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
+    <div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
@@ -262,6 +269,11 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
             <DialogTitle>
               {editingMedication ? 'Editar Medicação' : 'Nova Medicação'}
             </DialogTitle>
+            <DialogDescription>
+              {editingMedication
+                ? 'Altere as informações da medicação abaixo.'
+                : 'Adicione uma nova medicação usada para tratar suas enxaquecas.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div>
@@ -301,7 +313,7 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleCloseDialog} className="border border-gray-300">
+            <Button onClick={handleCloseDialog} disabled={saving} className="border border-gray-300">
               Cancelar
             </Button>
             <Button
@@ -309,7 +321,14 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
               disabled={!medicationName.trim() || saving}
               className="bg-[#6C63FF] hover:bg-[#5850E6]"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingMedication ? 'Salvar' : 'Adicionar')}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                editingMedication ? 'Salvar' : 'Adicionar'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -325,12 +344,20 @@ export function MedicationsManagement({ onBack }: MedicationsManagementProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deleting}
               className="bg-[#E74C3C] hover:bg-[#C0392B]"
             >
-              Excluir
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

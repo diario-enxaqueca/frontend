@@ -142,7 +142,7 @@ export function ProfileSettings({ onBack, onLogout }: ProfileSettingsProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div>
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">

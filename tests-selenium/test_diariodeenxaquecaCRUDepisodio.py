@@ -113,4 +113,3 @@ class TestDiariodeenxaquecaCRUDepisodio():
         print("\n" + "=" * 60)
         print("TESTE CRUD DE EPISÓDIOS CONCLUÍDO COM SUCESSO")
         print("=" * 60)
-

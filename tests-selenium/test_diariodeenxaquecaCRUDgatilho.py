@@ -92,4 +92,3 @@ class TestDiariodeenxaquecaCRUDgatilho():
         print("\n" + "=" * 60)
         print("TESTE CRUD DE GATILHOS CONCLUÍDO COM SUCESSO")
         print("=" * 60)
-

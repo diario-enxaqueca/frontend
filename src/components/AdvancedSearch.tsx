@@ -43,75 +43,121 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
   const allTriggers = ['Estresse', 'Falta de sono', 'Chocolate', 'Café', 'Luz forte', 'Alimentos específicos', 'Telas prolongadas'];
   const allMedications = ['Paracetamol', 'Ibuprofeno', 'Dipirona', 'Sumatriptano', 'Naproxeno'];
 
-  const episodes: Episode[] = [
+  const episodes = [
     {
-      id: '1',
-      date: '2025-10-23',
-      intensity: 9,
-      duration: '4h',
-      triggers: ['Estresse', 'Falta de sono'],
-      medications: ['Paracetamol', 'Ibuprofeno'],
-      notes: 'Episódio muito intenso após dia de trabalho',
+      id: 1,
+      data_inicio: '2025-10-23T10:00:00',
+      data_fim: '2025-10-23T14:00:00',
+      intensidade: 9,
+      localizacao: 'Frontal',
+      duracao_estimada: 240,
+      observacoes: 'Episódio muito intenso após dia de trabalho',
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 1, nome: 'Estresse', usuario_id: 1 },
+        { id: 2, nome: 'Falta de sono', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 1, nome: 'Paracetamol', dosagem: '500mg', usuario_id: 1 },
+        { id: 2, nome: 'Ibuprofeno', dosagem: '400mg', usuario_id: 1 }
+      ],
     },
     {
-      id: '2',
-      date: '2025-10-20',
-      intensity: 6,
-      duration: '2h',
-      triggers: ['Alimentos específicos'],
-      medications: ['Paracetamol'],
-      notes: 'Melhorou após medicação',
+      id: 2,
+      data_inicio: '2025-10-20T08:00:00',
+      data_fim: '2025-10-20T10:00:00',
+      intensidade: 6,
+      localizacao: 'Temporal',
+      duracao_estimada: 120,
+      observacoes: 'Melhorou após medicação',
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 3, nome: 'Alimentos específicos', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 1, nome: 'Paracetamol', dosagem: '500mg', usuario_id: 1 }
+      ],
     },
     {
-      id: '3',
-      date: '2025-10-15',
-      intensity: 8,
-      duration: '3h 30min',
-      triggers: ['Estresse', 'Telas prolongadas'],
-      medications: ['Dipirona'],
+      id: 3,
+      data_inicio: '2025-10-15T09:00:00',
+      data_fim: '2025-10-15T12:30:00',
+      intensidade: 8,
+      localizacao: 'Bilateral',
+      duracao_estimada: 210,
+      observacoes: null,
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 1, nome: 'Estresse', usuario_id: 1 },
+        { id: 4, nome: 'Telas prolongadas', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 3, nome: 'Dipirona', dosagem: '1g', usuario_id: 1 }
+      ],
     },
     {
-      id: '4',
-      date: '2025-10-10',
-      intensity: 5,
-      duration: '1h 30min',
-      triggers: ['Café', 'Luz forte'],
-      medications: ['Ibuprofeno'],
-      notes: 'Episódio leve, resolveu rápido',
+      id: 4,
+      data_inicio: '2025-10-10T14:00:00',
+      data_fim: '2025-10-10T15:30:00',
+      intensidade: 5,
+      localizacao: 'Occipital',
+      duracao_estimada: 90,
+      observacoes: 'Episódio leve, resolveu rápido',
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 5, nome: 'Café', usuario_id: 1 },
+        { id: 6, nome: 'Luz forte', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 2, nome: 'Ibuprofeno', dosagem: '400mg', usuario_id: 1 }
+      ],
     },
     {
-      id: '5',
-      date: '2025-10-05',
-      intensity: 7,
-      duration: '3h',
-      triggers: ['Falta de sono'],
-      medications: ['Sumatriptano'],
+      id: 5,
+      data_inicio: '2025-10-05T06:00:00',
+      data_fim: '2025-10-05T09:00:00',
+      intensidade: 7,
+      localizacao: 'Unilateral',
+      duracao_estimada: 180,
+      observacoes: null,
+      usuario_id: 1,
+      sintomas: null,
+      gatilhos: [
+        { id: 2, nome: 'Falta de sono', usuario_id: 1 }
+      ],
+      medicacoes: [
+        { id: 4, nome: 'Sumatriptano', dosagem: '50mg', usuario_id: 1 }
+      ],
     },
   ];
 
   // Aplicar filtros
   const filteredEpisodes = episodes.filter((episode) => {
-    // Filtro de texto (busca em notes)
-    if (searchText && episode.notes) {
-      if (!episode.notes.toLowerCase().includes(searchText.toLowerCase())) {
+    // Filtro de texto (busca em observacoes)
+    if (searchText && episode.observacoes) {
+      if (!episode.observacoes.toLowerCase().includes(searchText.toLowerCase())) {
         return false;
       }
     }
 
     // Filtro de data
-    const episodeDate = new Date(episode.date);
+    const episodeDate = new Date(episode.data_inicio);
     if (dateFrom && episodeDate < dateFrom) return false;
     if (dateTo && episodeDate > dateTo) return false;
 
     // Filtro de intensidade
-    if (episode.intensity < intensityRange[0] || episode.intensity > intensityRange[1]) {
+    if (episode.intensidade < intensityRange[0] || episode.intensidade > intensityRange[1]) {
       return false;
     }
 
     // Filtro de gatilhos
     if (selectedTriggers.length > 0) {
       const hasSelectedTrigger = selectedTriggers.some((trigger) =>
-        episode.triggers.includes(trigger)
+        episode.gatilhos.some(g => g.nome === trigger)
       );
       if (!hasSelectedTrigger) return false;
     }
@@ -119,7 +165,7 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
     // Filtro de medicações
     if (selectedMedications.length > 0) {
       const hasSelectedMedication = selectedMedications.some((med) =>
-        episode.medications.includes(med)
+        episode.medicacoes.some(m => m.nome === med)
       );
       if (!hasSelectedMedication) return false;
     }
@@ -168,17 +214,17 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
     return '#E74C3C';
   };
 
+  console.log('AdvancedSearch renderizado');
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-[#333333]">Busca Avançada</h1>
-            <p className="text-[#717182]">
-              Encontre episódios específicos usando múltiplos filtros
-            </p>
-          </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <h1 className="text-[#333333]">Busca Avançada</h1>
+          <p className="text-[#717182]">
+            Encontre episódios específicos usando múltiplos filtros
+          </p>
+        </div>
           <Button
             variant="ghost"
             size="icon"
@@ -420,7 +466,8 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
                   <EpisodeCard
                     key={episode.id}
                     episode={episode}
-                    onClick={() => onViewEpisode?.(episode.id)}
+                    onEdit={(id) => console.log('Editar:', id)}
+                    onViewDetails={(id) => onViewEpisode?.(id)}
                   />
                 ))}
               </div>
@@ -446,7 +493,6 @@ export function AdvancedSearch({ onBack, onViewEpisode }: AdvancedSearchProps) {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

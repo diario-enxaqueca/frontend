@@ -112,8 +112,7 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
   const COLORS = ['#6C63FF', '#FF6F91', '#2ECC71', '#F39C12', '#E67E22', '#E74C3C'];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 lg:pb-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="space-y-2">
@@ -455,7 +454,6 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
